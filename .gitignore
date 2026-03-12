@@ -1,0 +1,16 @@
+# Archivos y carpetas de datos locales (Volúmenes de Docker)
+input-wav/
+png-images/
+raw_images/
+
+# Configuraciones y secretos locales
+configs/
+configs/token
+.env
+
+# Excluir archivos de SO
+.DS_Store
+Thumbs.db
+
+# Entorno virtual de Python
+.venv
