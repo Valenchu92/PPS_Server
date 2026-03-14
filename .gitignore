@@ -1,16 +1,25 @@
-# Archivos y carpetas de datos locales (Volúmenes de Docker)
-input-wav/
+# Archivos y carpetas de datos locales (Imágenes, videos)
 png-images/
 raw_images/
 
-# Configuraciones y secretos locales
-configs/
-configs/token
+# Carpetas de datos de servicios Docker (Volúmenes mapeados si los hubiera localmente)
+grafana-data/
+influxdb-data/
+n8n-data/
+
+# Configuraciones y secretos locales (Rclone token, tokens de influx, etc.)
+configs/*
+# Excepción: Queremos que los workflows y estructura base sí suban al repo
+!configs/workflows/
+
+# Variables de entorno
 .env
 
-# Excluir archivos de SO
+# Excluir archivos de Sistema Operativo
 .DS_Store
 Thumbs.db
 
-# Entorno virtual de Python
-.venv
+# Python
+.venv/
+__pycache__/
+*.pyc

@@ -1,0 +1,121 @@
+{
+  "name": "GOES Imager - Download & Crop",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://cdn.star.nesdis.noaa.gov/GOES16/ABI/SECTOR/ssa/GEOCOLOR/7200x4320.jpg",
+        "responseFormat": "file",
+        "options": {}
+      },
+      "name": "Download GOES",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "mkdir -p /raw_images && mv /tmp/$(ls -t /tmp | head -n 1) /raw_images/goes_temp.jpg"
+      },
+      "name": "Save Raw Locally",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "python3 /n8n-custom/scripts/crop_cordoba.py /raw_images/goes_temp.jpg /output/goes_cordoba_$(date +%s).png"
+      },
+      "name": "Crop Cordoba",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "rm -f /raw_images/goes_temp.jpg"
+      },
+      "name": "Cleanup Raw",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "Download GOES",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download GOES": {
+      "main": [
+        [
+          {
+            "node": "Save Raw Locally",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Raw Locally": {
+      "main": [
+        [
+          {
+            "node": "Crop Cordoba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crop Cordoba": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Raw",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true
+}

@@ -1,0 +1,58 @@
+{
+  "name": "Metric Calculator",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "This workflow is intended to combine the outputs from GOES Imager, SatStream and SMN Surface Data to calculate specific climate metrics and re-insert them into InfluxDB."
+      },
+      "name": "Documentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "trigger-metrics",
+        "options": {}
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        450,
+        400
+      ],
+      "webhookId": "custom-metrics-webhook"
+    },
+    {
+      "parameters": {
+        "command": "echo 'Calculate metrics here'"
+      },
+      "name": "Calculate Base Metrics",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        650,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Calculate Base Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false
+}
