@@ -1,25 +1,21 @@
-# Archivos y carpetas de datos locales (Imágenes, videos)
-png-images/
-raw_images/
-
-# Carpetas de datos de servicios Docker (Volúmenes mapeados si los hubiera localmente)
-grafana-data/
-influxdb-data/
-n8n-data/
-
-# Configuraciones y secretos locales (Rclone token, tokens de influx, etc.)
-configs/*
-# Excepción: Queremos que los workflows y estructura base sí suban al repo
-!configs/workflows/
-
-# Variables de entorno
+# Docker y Entorno
 .env
+volumes/
+raw_images/
+raw_data/
+png-images/
 
-# Excluir archivos de Sistema Operativo
-.DS_Store
-Thumbs.db
+# Configuraciones sensibles y estado
+configs/influxdb/
 
 # Python
-.venv/
 __pycache__/
 *.pyc
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# SO local
+.DS_Store
+Thumbs.db

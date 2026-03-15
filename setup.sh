@@ -1,104 +1,112 @@
 #!/bin/bash
 
 # ==============================================================================
-# Setup Script - NOAA Climate Information System (Server)
+# CONFIGURACIÓN DEL ENTORNO DE SERVIDOR
 # ==============================================================================
-# Este script automatiza la configuración inicial del entorno de despliegue.
-# Crea las carpetas necesarias, verifica dependencias y levanta los servicios.
+# Script de auto-configuración y despliegue rápido.
+# Ideal para entornos donde no se requiere intervención manual pesada.
+# ==============================================================================
 
-set -e
+set -e # Detener script si algún comando falla
 
 echo "🚀 Iniciando configuración del entorno Server..."
 
 # 1. Verificar dependencias
 echo "🔍 Verificando dependencias..."
-for req in docker "docker compose"; do
+for req in docker curl unzip; do
     if ! command -v $req &> /dev/null; then
-        if [ "$req" = "docker compose" ] && command -v docker-compose &> /dev/null; then
-            continue
-        fi
-        echo "❌ Error: $req no está instalado. Por favor, instálalo antes de continuar."
+        echo "❌ Error: $req no está instalado. Por favor instálalo primero."
         exit 1
     fi
 done
+
+# Check docker compose version
+if ! docker compose version &> /dev/null; then
+  echo "❌ Error: Docker Compose v2 no encontrado."
+  exit 1
+fi
 echo "✅ Dependencias correctas."
 
-# 2. Crear estructura de directorios
-echo "📂 Creando estructura de directorios..."
-
-if [ -f .env ]; then
-    set -a
-    source .env
-    set +a
+# 2. Configurar variables de entorno si no existen
+if [ ! -f .env ]; then
+    echo "📄 Creando archivo .env a partir de .env.template..."
+    cp .env.template .env
+    echo "⚠️ Por favor, revisa el archivo .env para asegurar que las credenciales son seguras."
+else
+    echo "✅ Archivo .env existente detectado. Usando configuración actual."
 fi
 
-DIR_PNG=${HOST_PNG_OUTPUT_DIR:-png-images}
-DIR_RAW=${HOST_RAW_IMAGES_DIR:-raw_images}
-DIR_CONFIG=${HOST_CONFIG_DIR:-configs}
+source .env
 
+# 3. Validar variables mínimas obligatorias
+if [ -z "$INFLUXDB_INIT_ADMIN_TOKEN" ]; then
+    echo "❌ Error: INFLUXDB_INIT_ADMIN_TOKEN no está definido."
+    exit 1
+fi
+
+# 4. Crear estructura de carpetas locales para volumenes
+echo "📂 Creando estructura de directorios..."
 DIRECTORIES=(
-    "$DIR_PNG"
-    "$DIR_RAW"
-    "$DIR_CONFIG"
-    "$DIR_CONFIG/influxdb"
-    "n8n-custom/scripts"
+    "${HOST_PNG_OUTPUT_DIR:-./png-images}"
+    "${HOST_RAW_IMAGES_DIR:-./raw_images}"
+    "${HOST_RAW_DATA_DIR:-./raw_data}"
+    "${HOST_CONFIG_DIR:-./configs}"
+    "${HOST_CONFIG_DIR:-./configs}/influxdb"
+    "processor"
 )
 
-for dir in "${DIRECTORIES[@]}"; do
-    if [ ! -d "$dir" ]; then
-        mkdir -p "$dir"
-        echo "  - Creado directorio: $dir/"
+for DIR in "${DIRECTORIES[@]}"; do
+    if [ ! -d "$DIR" ]; then
+        mkdir -p "$DIR"
+        chmod 755 "$DIR"
+        echo "  - Creado directorio: $DIR"
     else
-        echo "  - Directorio '$dir/' ya existe. Omitiendo."
+        echo "  - Directorio '$DIR' ya existe. Omitiendo."
     fi
 done
 
-# Copiar configuración inicial de Telegraf si no existe
-if [ ! -f "$DIR_CONFIG/telegraf.conf" ]; then
-    echo "  - Telegraf conf no encontrado. Si no lo has creado manualmente, asegúrate de tenerlo antes de iniciar Telegraf."
-fi
-
-# 3. Configurar Google Drive opcionalmente
+# 5. Opcional: Configurar rclone 
 echo "☁️ Configuración de Google Drive (Opcional)"
-read -p "   ¿Deseas configurar la sincronización interactiva con Google Drive ahora usando Rclone? (S/n): " config_gdrive
-if [[ "$config_gdrive" =~ ^[SsYy]$ ]] || [[ -z "$config_gdrive" ]]; then
-    echo "   >> Ejecutando entorno temporal de configuración Rclone..."
-    echo "   >> Sigue los pasos interactivos. Para crear tu cuenta presiona 'n' (New remote)."
-    echo "   >> Cuando pida auto config presiona 'y', esto abrirá tu navegador para aceptar permisos."
-    docker run --rm -it \
-        -v "$(pwd)/configs:/config/rclone" \
-        --net=host \
-        rclone/rclone config
-    echo "   ✅ Configuración de Rclone creada y guardada en ./configs/rclone.conf"
-    echo "   >> Recuerda prender la variable RCLONE_SYNC_ENABLED=true en el archivo .env"
+if [ ! -f "${HOST_CONFIG_DIR:-./configs}/rclone.conf" ]; then
+    read -p "   ¿Deseas configurar rclone para Google Drive ahora? (S/n): " auth_rclone
+    if [[ "$auth_rclone" =~ ^[Ss]$ ]] || [[ -z "$auth_rclone" ]]; then
+        echo "   Ejecutando configuración interactiva de Rclone..."
+        echo "   -> Selecciona 'n' (New remote)"
+        echo "   -> Nombre: 'gdrive' (Obligatorio para los workflows)"
+        echo "   -> Tipo: 'drive' (Google Drive)"
+        echo "   -> Deja Client ID y Secret en blanco"
+        echo "   -> Scope: 'drive' (Full access)"
+        echo "   Sigue las instrucciones del navegador..."
+        
+        # Corre un contenedor rclone descartable para generar la config y guardarla local
+        mkdir -p "${HOST_CONFIG_DIR:-./configs}"
+        touch "${HOST_CONFIG_DIR:-./configs}/rclone.conf"
+        docker run --rm -it \
+            -v "$(pwd)/${HOST_CONFIG_DIR:-./configs}:/config/rclone" \
+            rclone/rclone config
+    else
+        echo "   ⏩ Omitiendo configuración de Google Drive."
+    fi
 else
-    echo "   ⏩ Omitiendo configuración de Google Drive."
+    echo "   ✅ Configuración de rclone.conf ya detectada."
 fi
 
-# 4. Iniciar servicios con Docker Compose
+# 6. Levantar todo el stack con Docker Compose
 echo "🐳 Construyendo e iniciando contenedores Docker..."
-docker compose up -d --build
+docker compose build
+docker compose up -d
 
-echo "⏳ Esperando a que n8n inicie su base de datos y servicios (15 segundos)..."
+# 7. Esperar a n8n y restaurar los workflows nuevos (Opcional si los creamos luego)
+echo "⏳ Esperando a que InfluxDB y N8N arranquen... (15 segundos)"
 sleep 15
 
-echo "📥 Importando workflows en n8n..."
-for workflow in ./configs/workflows/*.json; do
-    if [ -f "$workflow" ]; then
-        filename=$(basename -- "$workflow")
-        echo "   - Importando $filename..."
-        docker exec n8n n8n import:workflow --input="/configs/workflows/$filename" || echo "   ⚠️ Advertencia: No se pudo importar $filename (puede que ya exista)."
-    fi
-done
-docker compose restart n8n
-
-echo ""
 echo "=============================================================================="
 echo "✨ ¡ENTORNO DESPLEGADO CON ÉXITO! ✨"
 echo "=============================================================================="
 echo "Siguientes pasos:"
-echo "1. Accede a n8n en: http://localhost:${N8N_PORT:-5678} para configurar tus workflows."
-echo "2. Accede a Grafana en: http://localhost:${GRAFANA_PORT:-3000} (usuario inicial: admin/admin) y conecta la base de datos InfluxDB."
-echo "3. Accede a la Galería estática en: http://localhost:${GALLERY_PORT:-8080}."
-echo "4. Accede a InfluxDB en: http://localhost:8086 y verifica el bucket 'telemetry'."
+echo "1. Accede a n8n en: http://localhost:${N8N_PORT:-5678} para configurar los fetchers."
+echo "2. Accede a Grafana en: http://localhost:${GRAFANA_PORT:-3000} (admin/admin)."
+echo "3. Revisa los logs de Processor: docker compose logs -f processor"
+echo "4. Accede a la Galería estática en: http://localhost:${GALLERY_PORT:-8080}."
+echo "5. InfluxDB activo en http://localhost:8086 con los 3 buckets listos."
 echo "=============================================================================="

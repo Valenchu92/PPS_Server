@@ -2,21 +2,37 @@ version: '3.8'
 
 services:
   n8n:
-    build:
-      context: ./n8n-custom
+    image: n8nio/n8n:latest
     container_name: n8n
     ports:
       - "${N8N_PORT:-5678}:5678"
     volumes:
       - n8n-data:/home/node/.n8n
-      - ${HOST_PNG_OUTPUT_DIR:-./png-images}:/output:rw
       - ${HOST_RAW_IMAGES_DIR:-./raw_images}:/raw_images:rw
+      - ${HOST_RAW_DATA_DIR:-./raw_data}:/raw_data:rw
       - ${HOST_CONFIG_DIR:-./configs}:/configs:rw
     environment:
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
-      - N8N_RESTRICT_FILE_ACCESS_TO=/raw_images;/output
-      - RCLONE_CONFIG=/configs/rclone.conf
-      - RCLONE_SYNC_ENABLED=${RCLONE_SYNC_ENABLED:-true}
+      - N8N_RESTRICT_FILE_ACCESS_TO=/raw_images;/raw_data
+    restart: unless-stopped
+
+  processor:
+    build:
+      context: ./processor
+    container_name: processor
+    volumes:
+      - ${HOST_RAW_IMAGES_DIR:-./raw_images}:/raw_images:rw
+      - ${HOST_RAW_DATA_DIR:-./raw_data}:/raw_data:rw
+      - ${HOST_PNG_OUTPUT_DIR:-./png-images}:/png-images:rw
+    environment:
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_TOKEN=${INFLUXDB_INIT_ADMIN_TOKEN:-my-super-secret-auth-token}
+      - INFLUX_ORG=${INFLUXDB_INIT_ORG:-noaa_org}
+      - INFLUX_BUCKET_TELEMETRY=${INFLUXDB_BUCKET_TELEMETRY:-telemetry}
+      - INFLUX_BUCKET_INDEXES=${INFLUXDB_BUCKET_INDEXES:-indexes}
+      - INFLUX_BUCKET_PREDICTIONS=${INFLUXDB_BUCKET_PREDICTIONS:-predictions}
+    depends_on:
+      - influxdb
     restart: unless-stopped
 
   influxdb:
@@ -36,20 +52,6 @@ services:
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_INIT_ADMIN_TOKEN:-my-super-secret-auth-token}
     restart: unless-stopped
 
-  telegraf:
-    image: telegraf:alpine
-    container_name: telegraf
-    volumes:
-      - ${HOST_CONFIG_DIR:-./configs}/telegraf.conf:/etc/telegraf/telegraf.conf:ro
-    environment:
-      - INFLUX_TOKEN=${INFLUXDB_INIT_ADMIN_TOKEN:-my-super-secret-auth-token}
-      - INFLUX_ORG=${INFLUXDB_INIT_ORG:-noaa_org}
-      - INFLUX_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
-      - INFLUX_URL=http://influxdb:8086
-    depends_on:
-      - influxdb
-    restart: unless-stopped
-
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -57,6 +59,8 @@ services:
       - "${GRAFANA_PORT:-3000}:3000"
     volumes:
       - grafana-data:/var/lib/grafana
+    depends_on:
+      - influxdb
     restart: unless-stopped
 
   gallery:
