@@ -7,7 +7,7 @@ png-images/
 
 # Configuraciones sensibles y estado
 configs/influxdb/
-
+configs/rclone
 # Python
 __pycache__/
 *.pyc
