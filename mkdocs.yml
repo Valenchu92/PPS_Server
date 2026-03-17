@@ -31,3 +31,14 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Inicio: index.md
+  - Arquitectura: arquitectura.md
+  - Guía de Instalación: configuracion.md
+  - Módulos:
+      - SMN (Datos Oficiales): modulos/smn.md
+      - OpenWeatherMap (API): modulos/owm.md
+      - GOES-16 (Satelital): modulos/goes.md
+  - Visualización: visualizacion.md
+  - Guía n8n: n8n_guia.md

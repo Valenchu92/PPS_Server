@@ -1,54 +1,29 @@
-# Arquitectura del Sistema NOAA
+# Sistema de Información Climática Río Cuarto
 
-El sistema está diseñado en una serie de bloques que abarcan desde la recepción de la señal de radio hasta su procesamiento y posterior visualización. A continuación se presenta el diagrama general de la infraestructura:
+Bienvenido a la documentación oficial del Servidor de Procesamiento Meteorológico. Este sistema está diseñado para la adquisición, procesamiento y visualización de datos climáticos y satelitales centrados en la ciudad de Río Cuarto, Córdoba.
 
-```mermaid
-graph TD
-    %% Bloque 1: Adquisición
-    subgraph Adquisición ["1. Adquisición y Demodulación"]
-        A["Antena V-Dipole / QFH"] --> B["SDR RTL-SDR"]
-        B --> C["Software SDR SDR# / GQRX / SatDump"]
-        C --"Demodulación FM"--> D["Archivo de Audio .WAV"]
-    end
+## 🌟 Características Principales
 
-    %% Bloque 2: Procesamiento
-    subgraph Procesamiento ["2. Procesamiento e Ingesta"]
-        D --"Volumen: input-wav/"--> E{{"Contenedor: Processor"}}
-        E --"Decodificación APT (noaa-apt)"--> F["Imágenes Satelitales .PNG<br>+ Metadatos y Telemetría"]
-    end
+- **Multi-fuente**: Integración de datos del Servicio Meteorológico Nacional (SMN) y OpenWeatherMap.
+- **Predicción Local**: Algoritmo de Zambretti adaptado al hemisferio sur para pronósticos de corto plazo (24h).
+- **Procesamiento Satelital**: Adquisición y recorte automático de imágenes del satélite GOES-16.
+- **Visualización Profesional**: Dashboards en Grafana con comparación de fuentes en tiempo real.
+- **Automatización Total**: Flujos de trabajo gestionados por n8n y contenedores Docker.
 
-    %% Bloque 3: Almacenamiento
-    subgraph Almacenamiento ["3. Almacenamiento y Notificación"]
-        F --"Volumen: png-images/"--> G[("Sistema de Archivos Local")]
-        E --"API Call (Tiempo Real)"--> H["Contenedor: Immich Server"]
-    end
+## 📋 Resumen del Stack Tecnológico
 
-    %% Bloque 4: Visualización
-    subgraph Visualizacion ["4. Visualización y Uso"]
-        G -.-> H
-        H -.-> I["Bases de Datos<br>Postgres + Redis"]
-        H --"Búsquedas, Álbumnes y Reconocimiento"--> J["Usuario General / Público<br>Galería Web/Móvil Immich"]
-        
-        G --"Análisis de Telemetría (Falso Color/Mapas)"--> K["Meteorólogos / Especialistas<br>Sistemas SIG (QGIS) / SatDump"]
-    end
+| Componente | Tecnología | Propósito |
+| :--- | :--- | :--- |
+| **Base de Datos** | InfluxDB 2.x | Almacenamiento de series temporales (Telemetría) |
+| **Visualización** | Grafana | Dashboards interactivos y alertas |
+| **Automatización** | n8n | Orquestación de descargas y APIs |
+| **Procesador** | Python 3.12 (Docker) | Lógica de cálculo, filtrado y OpenCV |
+| **Galería** | Nginx | Servidor web para imágenes procesadas |
 
-    %% Estilos Adicionales
-    classDef hardware fill:#e0f2fe,stroke:#0369a1,stroke-width:2px,color:#0c4a6e;
-    classDef soft fill:#fecdd3,stroke:#be123c,stroke-width:2px,color:#881337;
-    classDef docker fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#14532d;
-    classDef users fill:#fef08a,stroke:#a16207,stroke-width:2px,color:#713f12;
+## 🚀 Inicio Rápido
 
-    class A,B hardware;
-    class C soft;
-    class E,H docker;
-    class J,K users;
+Para poner en marcha el servidor por primera vez, consulta la [Guía de Instalación](configuracion.md).
+
+```bash
+./setup.sh
 ```
-
-## Componentes del Entorno Docker
-
-El sistema se compone de los siguientes contenedores principales que interactúan entre sí:
-
-* **Processor (noaa-apt):** Es el corazón del procesamiento. Detecta instantáneamente nuevos archivos de audio, los convierte a imágenes y notifica a la galería.
-* **Immich:** Provee una interfaz tipo "Google Photos" para el público general.
-* **Bases de Datos:** PostgreSQL y Redis almacenan los metadatos fotográficos y optimizan las consultas.
-* **n8n:** Orquestador reservado para automatizaciones futuras (ej. descargas en la nube).

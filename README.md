@@ -5,6 +5,10 @@ Este proyecto implementa el sistema de procesamiento y visualización de imágen
 
 El sistema está diseñado en una serie de bloques que abarcan desde la recepción de la señal de radio hasta su procesamiento y posterior visualización. A continuación se presenta un diagrama general de la infraestructura:
 
+![Diagrama de Arquitectura](docs/assets/img/diagrama_arquitectura.png)
+
+### Flujo de Datos Detallado (Mermaid)
+
 ```mermaid
 graph TD
     %% Bloque 1: Adquisición

@@ -48,10 +48,13 @@ fi
 echo "📂 Creando estructura de directorios..."
 DIRECTORIES=(
     "${HOST_PNG_OUTPUT_DIR:-./png-images}"
+    "${HOST_PNG_NOAA_DIR:-./png-NOAA}"
     "${HOST_RAW_IMAGES_DIR:-./raw_images}"
     "${HOST_RAW_DATA_DIR:-./raw_data}"
     "${HOST_CONFIG_DIR:-./configs}"
     "${HOST_CONFIG_DIR:-./configs}/influxdb"
+    "${HOST_CONFIG_DIR:-./configs}/grafana/provisioning/datasources"
+    "${HOST_CONFIG_DIR:-./configs}/grafana/provisioning/dashboards"
     "processor"
 )
 
@@ -67,7 +70,7 @@ done
 
 # 5. Opcional: Configurar rclone 
 echo "☁️ Configuración de Google Drive (Opcional)"
-if [ ! -f "${HOST_CONFIG_DIR:-./configs}/rclone.conf" ]; then
+if [ ! -f "${HOST_CONFIG_DIR:-./configs}/rclone/rclone.conf" ]; then
     read -p "   ¿Deseas configurar rclone para Google Drive ahora? (S/n): " auth_rclone
     if [[ "$auth_rclone" =~ ^[Ss]$ ]] || [[ -z "$auth_rclone" ]]; then
         echo "   Ejecutando configuración interactiva de Rclone..."
@@ -79,10 +82,10 @@ if [ ! -f "${HOST_CONFIG_DIR:-./configs}/rclone.conf" ]; then
         echo "   Sigue las instrucciones del navegador..."
         
         # Corre un contenedor rclone descartable para generar la config y guardarla local
-        mkdir -p "${HOST_CONFIG_DIR:-./configs}"
-        touch "${HOST_CONFIG_DIR:-./configs}/rclone.conf"
+        mkdir -p "${HOST_CONFIG_DIR:-./configs}/rclone"
+        touch "${HOST_CONFIG_DIR:-./configs}/rclone/rclone.conf"
         docker run --rm -it \
-            -v "$(pwd)/${HOST_CONFIG_DIR:-./configs}:/config/rclone" \
+            -v "$(pwd)/${HOST_CONFIG_DIR:-./configs}/rclone:/config/rclone" \
             rclone/rclone config
     else
         echo "   ⏩ Omitiendo configuración de Google Drive."
@@ -96,9 +99,25 @@ echo "🐳 Construyendo e iniciando contenedores Docker..."
 docker compose build
 docker compose up -d
 
-# 7. Esperar a n8n y restaurar los workflows nuevos (Opcional si los creamos luego)
-echo "⏳ Esperando a que InfluxDB y N8N arranquen... (15 segundos)"
-sleep 15
+# 7. Esperar a n8n e importar workflows automáticamente
+echo "⏳ Esperando a que los servicios arranquen para importar workflows... (20 segundos)"
+sleep 20
+
+WORKFLOWS_DIR="${HOST_CONFIG_DIR:-./configs}/workflows"
+if [ -d "$WORKFLOWS_DIR" ]; then
+    echo "⚙️ Importando workflows de n8n desde $WORKFLOWS_DIR..."
+    for wf in "$WORKFLOWS_DIR"/*.json; do
+        if [ -f "$wf" ]; then
+            FILENAME=$(basename "$wf")
+            echo "  - Importando: $FILENAME"
+            # Ejecutamos el comando de importación dentro del contenedor de n8n
+            # Nota: la carpeta configs ya está montada en /configs dentro del contenedor
+            docker compose exec -T n8n n8n import:workflow --file "/configs/workflows/$FILENAME" || echo "    ⚠️ Error importando $FILENAME (puede que ya exista o n8n no esté listo)"
+        fi
+    done
+else
+    echo "⚠️ Directorio de workflows no encontrado. Omitiendo importación."
+fi
 
 echo "=============================================================================="
 echo "✨ ¡ENTORNO DESPLEGADO CON ÉXITO! ✨"

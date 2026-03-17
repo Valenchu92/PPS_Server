@@ -5,6 +5,7 @@ echo "Starting NOAA/SMN Central Processor Engine..."
 mkdir -p /raw_images
 mkdir -p /raw_data
 mkdir -p /png-images
+mkdir -p /png-NOAA
 
 echo "Setting up CRON tasks..."
 # 1. Download Cloud (Rclone) every 3 hours
@@ -28,11 +29,17 @@ do
         if [[ "$NEWFILE" == *.jpg || "$NEWFILE" == *.png ]]; then
             echo "-> Dispatching GOES Crop worker..."
             python3 /app/crop_goes.py "$NEWFILE" &
+            
+            # Keep only the last 5 raw images to save space
+            ls -1tr /raw_images/*.jpg /raw_images/*.png 2>/dev/null | head -n -5 | xargs -r rm
         fi
     elif [[ "$NEWFILE" == /raw_data/* ]]; then
         if [[ "$NEWFILE" == *.txt || "$NEWFILE" == *.zip ]]; then
             echo "-> Dispatching SMN Filter worker..."
             python3 /app/filter_smn.py "$NEWFILE" &
+        elif [[ "$NEWFILE" == *.json ]]; then
+            echo "-> Dispatching OWM Filter worker..."
+            python3 /app/filter_owm.py "$NEWFILE" &
         fi
     else
         echo "Ignored: Pattern not recognized."

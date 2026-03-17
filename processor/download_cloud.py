@@ -8,15 +8,15 @@ def main():
     # Requiere que el archivo rclone.conf este configurado
     try:
         # Verifica si el archivo de config existe (fue mapeado desde host)
-        if not os.path.exists("/configs/rclone.conf"):
-            print("ERROR: /configs/rclone.conf no encontrado. Configura Rclone primero.")
+        if not os.path.exists("/configs/rclone/rclone.conf"):
+            print("ERROR: /configs/rclone/rclone.conf no encontrado. Configura Rclone primero.")
             return
 
         cmd = [
             "rclone", "sync", 
-            "--config", "/configs/rclone.conf",
-            "gdrive:/pps_server/images", 
-            "/png-images",
+            "--config", "/configs/rclone/rclone.conf",
+            "gdrive:/images_pps", 
+            "/png-NOAA",
             "-v"
         ]
         

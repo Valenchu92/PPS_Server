@@ -32,6 +32,7 @@ COPY entrypoint.sh /app/entrypoint.sh
 COPY download_cloud.py /app/download_cloud.py
 COPY crop_goes.py /app/crop_goes.py
 COPY filter_smn.py /app/filter_smn.py
+COPY filter_owm.py /app/filter_owm.py
 COPY calculate_metrics.py /app/calculate_metrics.py
 
 RUN chmod +x /app/entrypoint.sh

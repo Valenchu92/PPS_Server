@@ -1,0 +1,125 @@
+{
+  "name": "OpenWeatherMap",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://api.openweathermap.org/data/2.5/weather?q=Rio%20Cuarto,AR&appid=60546be904a091a4068e6ea681595500&units=metric&lang=es",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openWeatherMapApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        0
+      ],
+      "id": "290843e1-4cb7-4b99-ad1b-36bb4ba6e517",
+      "name": "HTTP Request",
+      "credentials": {
+        "openWeatherMapApi": {
+          "id": "2kP7cOhvDw9LLmaO",
+          "name": "OpenWeatherMap account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c2bb353e-46e1-402c-b2fa-fae1c412fdf4",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/raw_data/owm_current.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        0
+      ],
+      "id": "33ece843-ba20-4293-846c-9aede76b34aa",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        0
+      ],
+      "id": "f9c77c94-feb2-46dc-97e4-524ce0b3e242",
+      "name": "Convert to File"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "7d9c7100-b045-4f27-bb81-c73baac210ff",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "40f18e35d735b4e69d27a173c5a77d389256d1158073c1db72efaffd1b889d28"
+  },
+  "id": "cxRP2YuGwwBdsoxY",
+  "tags": []
+}
