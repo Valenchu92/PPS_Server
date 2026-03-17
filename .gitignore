@@ -4,7 +4,7 @@ volumes/
 raw_images/
 raw_data/
 png-images/
-
+png-NOAA/
 # Configuraciones sensibles y estado
 configs/influxdb/
 configs/rclone
