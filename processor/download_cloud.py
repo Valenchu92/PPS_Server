@@ -12,10 +12,12 @@ def main():
             print("ERROR: /configs/rclone/rclone.conf no encontrado. Configura Rclone primero.")
             return
 
+        gdrive_path = os.environ.get("RCLONE_GDRIVE_PATH", "images_pps")
+        
         cmd = [
             "rclone", "sync", 
             "--config", "/configs/rclone/rclone.conf",
-            "gdrive:/images_pps", 
+            f"gdrive:/{gdrive_path}", 
             "/png-NOAA",
             "-v"
         ]

@@ -56,8 +56,11 @@ ZAMBRETTI_FORECASTS = {
     26: "Tormentoso, mucha lluvia"
 }
 
-def get_slp(p, altitude=441):
-    """Calcula la presión a nivel del mar aproximada para Río Cuarto"""
+# Altitud para cálculos de presión
+ALTITUDE = float(os.environ.get("METEOROLOGY_ALTITUDE", 441))
+
+def get_slp(p, altitude=ALTITUDE):
+    """Calcula la presión a nivel del mar aproximada"""
     return p + (altitude / 8.5)
 
 def calculate_zambretti(p_slp, trend, wind_dir):

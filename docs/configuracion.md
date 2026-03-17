@@ -8,13 +8,27 @@ Sigue estos pasos para levantar el servidor desde cero en un entorno Linux con D
 - Conexión a Internet.
 - Archivo `.env` configurado (puedes usar `.env.template`).
 
-## 📥 Paso 1: Clonar y Preparar
+## ⚙️ Paso 1: Configuración de Variables de Entorno
 
-Asegúrate de tener todos los archivos en tu directorio de trabajo y otorga permisos de ejecución al script de configuración:
+El sistema utiliza un archivo `.env` para gestionar credenciales, puertos y rutas. Para comenzar, copia el archivo de plantilla:
 
 ```bash
-chmod +x setup.sh
+cp .env.template .env
 ```
+
+### Variables Principales
+
+| Variable | Descripción | Valor por Defecto |
+| :--- | :--- | :--- |
+| `N8N_PORT` | Puerto para la interfaz de n8n | `5678` |
+| `GRAFANA_PORT` | Puerto para los tableros de Grafana | `3000` |
+| `INFLUXDB_INIT_ADMIN_TOKEN` | Token de acceso para InfluxDB | `my-super-secret-auth-token` |
+| `METEOROLOGY_ALTITUDE` | Altitud local (m) para corrección de presión | `441` |
+| `OPENWEATHERMAP_API_KEY` | Token de API de OpenWeatherMap | (Requerido) |
+| `RCLONE_GDRIVE_PATH` | Carpeta en GDrive para descarga de imágenes | `images_pps` |
+
+> [!IMPORTANT]
+> **Seguridad**: Asegúrate de cambiar las contraseñas y tokens por defecto en entornos de producción. El archivo `.env` está en el `.gitignore` para evitar que tus credenciales se suban al repositorio.
 
 ## 🚀 Paso 2: Ejecutar el Setup
 

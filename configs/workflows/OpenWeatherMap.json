@@ -3,9 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "url": "https://api.openweathermap.org/data/2.5/weather?q=Rio%20Cuarto,AR&appid=60546be904a091a4068e6ea681595500&units=metric&lang=es",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "openWeatherMapApi",
+        "url": "=https://api.openweathermap.org/data/2.5/weather?q={{$env.OPENWEATHERMAP_CITY}}&appid={{$env.OPENWEATHERMAP_API_KEY}}&units=metric&lang=es",
+        "authentication": "none",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -15,13 +14,7 @@
         0
       ],
       "id": "290843e1-4cb7-4b99-ad1b-36bb4ba6e517",
-      "name": "HTTP Request",
-      "credentials": {
-        "openWeatherMapApi": {
-          "id": "2kP7cOhvDw9LLmaO",
-          "name": "OpenWeatherMap account"
-        }
-      }
+      "name": "HTTP Request"
     },
     {
       "parameters": {

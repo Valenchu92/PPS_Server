@@ -71,11 +71,15 @@ La forma recomendada de desplegar toda la infraestructura desde cero es mediante
 
 1. Asegúrate de tener instalado `docker` y `docker compose`.
 2. Clona (o desplázate con `cd`) al directorio que contiene el proyecto.
-3. Copia el archivo `.env.template` y renómbralo a `.env`. Dentro de este archivo puedes modificar cualquier parámetro o directorio de configuración según tus necesidades.
+3. **Configura las variables de entorno**:
+   Copia el archivo de plantilla y edítalo con tus credenciales (especialmente el API Key de OpenWeatherMap):
    ```bash
    cp .env.template .env
+   nano .env
    ```
-4. Ejecuta el entorno inicial. El script aplicará todas las configuraciones definidas en tu archivo `.env`:
+   *Consulta la [Guía de Configuración](docs/configuracion.md) para más detalles sobre cada variable.*
+
+4. **Ejecuta el entorno inicial**:
 
 ```bash
 ./setup.sh
