@@ -10,37 +10,36 @@ En tu archivo `docker-compose.yml`, el servicio `n8n` está configurado de esta 
 
 ```yaml
 n8n:
-  image: docker.n8n.io/n8nio/n8n
+  image: n8nio/n8n:latest
   container_name: n8n
   ports:
-    - "5678:5678"
+    - "${N8N_PORT:-5678}:5678"
   volumes:
     - n8n-data:/home/node/.n8n
-    - ./png-images:/output:rw
+    - ${HOST_RAW_IMAGES_DIR:-./raw_images}:/raw_images:rw
+    - ${HOST_RAW_DATA_DIR:-./raw_data}:/raw_data:rw
   restart: unless-stopped
 ```
 
 **Puntos clave:**
-- **Acceso:** Expone el puerto `5678`. Podrás acceder a la interfaz gráfica entrando a `http://localhost:5678` en tu navegador.
-- **Persistencia de Flujos:** El volumen `n8n-data` guarda tus workflows, credenciales y configuraciones en Docker, así que no los perderás si se reinicia el contenedor.
-- **Volumen de Imágenes:** El volumen `./png-images:/output:rw` es crítico. Es la carpeta donde n8n debe guardar los archivos que descargue. Todo lo que el flujo guarde en la ruta interna `/output` aparecerá en la carpeta `./png-images` de tu computadora y, por lo tanto, Immich las detectará.
+- **Acceso:** Expone el puerto `5678` (por defecto). Accede mediante `http://localhost:5678`.
+- **Persistencia:** El volumen `n8n-data` guarda tus workflows y credenciales.
+- **Volúmenes de Datos:** 
+    - `/raw_images`: Donde n8n guarda las imágenes satelitales crudas para que el `processor` las recorte.
+    - `/raw_data`: Donde n8n guarda los JSON/TXT de telemetría para su ingesta en InfluxDB.
 
 ## 2. Accediendo a n8n por primera vez
 
 1. Asegúrate de que los contenedores estén corriendo (`docker compose up -d`).
 2. Abre tu navegador y ve a `http://localhost:5678`.
-3. La primera vez que entres, n8n te pedirá crear una cuenta de administrador local. Completa tus datos para proteger tu instancia.
+3. La primera vez que entres, n8n te pedirá crear una cuenta de administrador local.
 
 ## 3. Crear el Workflow para GOES
 
-La página de sector *South America* provee múltiples imágenes que se actualizan frecuentemente. Lo ideal es leer el feed RSS o el JSON de la página (que usan de forma interna para cargar los últimos datos).
-El formato que analizaremos es la imagen geocolor, cuyo patrón de URL es algo así como:
-`https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ssa/GEOCOLOR/1000x1000.jpg`
-
-Vamos a crear un workflow que de forma periódica descargue las imágenes más recientes.
+Vamos a crear un workflow que de forma periódica descargue las imágenes más recientes de 7200x4320 píxeles.
 
 > [!NOTE]
-> Puedes copiar el siguiente bloque de código JSON, ir a n8n en blanco, y simplemente **pegarlo** (Ctrl+V). n8n convertirá el JSON automáticamente en los nodos del workflow. Después de pegarlo, asegúrate de activar el flujo arriba a la derecha.
+> Puedes copiar el siguiente bloque de código JSON, ir a n8n en blanco, y simplemente **pegarlo** (Ctrl+V). n8n lo convertirá automáticamente en los nodos del workflow.
 
 ```json
 {
@@ -68,9 +67,7 @@ Vamos a crear un workflow que de forma periódica descargue las imágenes más r
         "url": "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ssa/GEOCOLOR/7200x4320.jpg",
         "options": {
           "response": {
-            "response": {
-              "responseFormat": "file"
-            }
+            "responseFormat": "file"
           }
         }
       },
@@ -117,43 +114,31 @@ Vamos a crear un workflow que de forma periódica descargue las imágenes más r
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1"
-  },
-  "versionId": "df0618ce-16e5-4a11-b4ec-868bf0dc221c",
-  "meta": {
-    "instanceId": "local"
-  },
-  "tags": []
+  }
 }
 ```
 
 ## 4. Explicación nodo por nodo
 
-Si prefieres construirlo tú mismo a mano, esta es la secuencia de nodos que debes usar:
+### Nodo 1: Schedule Trigger
+Despierta el flujo cada 10 minutos (puedes ajustarlo según necesidad).
 
-### Nodo 1: Schedule Trigger (Trigger programado)
-- **Función:** Este nodo despierta a tu workflow cada cierta cantidad de tiempo.
-- **Configuración:** Ponlo en "Interval" -> cada X tiempo (ej. `6 Hours`).
-- *Nota: Empieza con un tiempo alto para no sobrecargar el servidor de la NOAA durante tus pruebas.*
+### Nodo 2: HTTP Request
+Descarga la imagen binaria (7200x4320) de la NOAA. Es vital que el **Response Format** esté seteado en `File`.
 
-### Nodo 2: HTTP Request (Descargar Imagen)
-- **Función:** Descargará el archivo estático que contiene la imagen pre-generada de 7200x4320 píxeles.
-- **URL:** `https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/ssa/GEOCOLOR/7200x4320.jpg`
-- **Settings importantes:** En las opciones del nodo asegúrate de expandir "Options", ir a "Response" y setear **Response Format** a `File`. De esta forma n8n sabe que está bajando una imagen binaria en lugar de texto o JSON.
-
-### Nodo 3: Read/Write Files from Disk (Guardar en Volumen)
-- **Función:** Tomará el archivo que descargó el nodo anterior en memoria y lo guardará físicamente en el volumen de Docker correspondiente.
-- **Operation:** `Write`
-- **File Name:** `=/raw_images/goes19_ssa_geocolor_{{$now.toFormat('yyyyMMdd_HHmm')}}.jpg`
-  - Aquí estamos diciéndole que lo guarde en la carpeta `/raw_images` (que en tu PC es la carpeta local `./raw_images`).
-  - Usamos una expresión para nombrar al archivo e insertarle el timestamp actual (ej. `goes19_ssa_geocolor_20260310_1900.jpg`), de modo que con cada bajada no sobreescriba a la anterior.
+### Nodo 3: Write to Disk
+Escribe la imagen en la carpeta `/raw_images`. 
+- El `processor` detectará este archivo instantáneamente.
+- El archivo resultante será procesado, recortado y luego guardado en `png-images`.
 
 ## 5. Validación
 
-1. Selecciona el **Modo de Prueba (Test Workflow)** en n8n para correrlo manualmente por primera vez.
-2. Si los 3 pasos se ven en verde, significa que descargó y guardó.
-3. Puedes ir a la carpeta de tu computadora llamada `png-images`. Deberías ver el archivo `.jpg` recién descargado allí.
-4. Debido a que `immich-server` tiene acceso al mismo volumen en `docker-compose.yml`, verás que la galería en Immich reflejará pronto la gráfica de GOES.
-5. No olvides **Activar (Active)** el workflow con el switch superior derecho, para que siga corriendo en los intervalos automáticos sin ti.
+1. Selecciona el **Modo de Prueba (Test Workflow)** en n8n.
+2. Si los 3 pasos se ven en verde:
+   - Revisa la carpeta local `./raw_images`: deberías ver el archivo balanceado.
+   - Revisa la carpeta local `./png-images`: segundos después debería aparecer el recorte de Córdoba.
+3. Puedes ver la imagen procesada en la Galería Estática (`http://localhost:8080/goes/`).
+4. No olvides **Activar (Active)** el workflow para que funcione de forma autónoma.
