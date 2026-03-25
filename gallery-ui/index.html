@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPS SatStream - Visualización en Tiempo Real</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-glow"></div>
+    
+    <header>
+        <div class="container">
+            <div class="logo">
+                <span class="logo-icon">📡</span>
+                <h1>SatStream<span>PRO</span></h1>
+            </div>
+            <nav id="last-update">Actualizando...</nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="hero-section">
+            <div class="content-wrapper">
+                <div class="image-viewer card">
+                    <div class="card-header">
+                        <div class="status-badge">
+                            <span class="pulse"></span> EN VIVO: GOES-19
+                        </div>
+                        <h2 id="image-timestamp">Satélite SatStream</h2>
+                    </div>
+                    <div class="image-container">
+                        <img id="main-satellite-image" src="" alt="Imagen Satelital GOES">
+                        <div id="image-loader" class="loader"></div>
+                    </div>
+                    <div class="card-footer">
+                        <p>Sector: Córdoba, Argentina (Recorte SSA)</p>
+                    </div>
+                </div>
+
+                <aside class="side-content">
+                    <div class="weather-card card">
+                        <h3>Clima Actual</h3>
+                        <p class="location">Estación: Río Cuarto</p>
+                        <div class="weather-main">
+                            <div class="temp-container">
+                                <span id="current-temp" class="value">--</span>
+                                <span class="unit">°C</span>
+                            </div>
+                            <div id="weather-icon" class="weather-icon">☁️</div>
+                        </div>
+                        <div class="weather-details">
+                            <div class="detail">
+                                <span class="label">Humedad</span>
+                                <span id="current-hum" class="val">--%</span>
+                            </div>
+                            <div class="detail">
+                                <span class="label">Presión</span>
+                                <span id="current-press" class="val">-- hPa</span>
+                            </div>
+                            <div class="detail">
+                                <span class="label">Viento</span>
+                                <span id="current-wind" class="val">-- km/h</span>
+                            </div>
+                        </div>
+                        <div class="data-source">Fuente: SMN Argentina</div>
+                    </div>
+
+
+                </aside>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 PPS SatStream - Monitoreo Satelital de Próxima Generación</p>
+            <div class="footer-links">
+                <span>Río Cuarto, Córdoba</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

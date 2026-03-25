@@ -5,7 +5,7 @@ services:
     image: n8nio/n8n:latest
     container_name: n8n
     ports:
-      - "${N8N_PORT:-5678}:5678"
+      - "127.0.0.1:${N8N_PORT:-5678}:5678"
     volumes:
       - n8n-data:/home/node/.n8n
       - ${HOST_RAW_IMAGES_DIR:-./raw_images}:/raw_images:rw
@@ -45,7 +45,7 @@ services:
     image: influxdb:2
     container_name: influxdb
     ports:
-      - "8086:8086"
+      - "127.0.0.1:8086:8086"
     volumes:
       - influxdb-data:/var/lib/influxdb2
       - ${HOST_CONFIG_DIR:-./configs}/influxdb:/etc/influxdb2
@@ -63,7 +63,7 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "${GRAFANA_PORT:-3000}:3000"
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
     volumes:
       - grafana-data:/var/lib/grafana
       - ${HOST_CONFIG_DIR:-./configs}/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -72,11 +72,12 @@ services:
     restart: unless-stopped
 
   gallery:
-    image: nginx:alpine
+    image: nginxinc/nginx-unprivileged:alpine
     container_name: gallery
     ports:
-      - "${GALLERY_PORT:-8080}:80"
+      - "${GALLERY_PORT:-8080}:8080"
     volumes:
+      - ./gallery-ui:/var/www/html
       - ${HOST_PNG_OUTPUT_DIR:-./png-images}:/var/www/html/goes:ro
       - ${HOST_PNG_NOAA_DIR:-./png-NOAA}:/var/www/html/noaa:ro
       - ${HOST_CONFIG_DIR:-./configs}/gallery/default.conf:/etc/nginx/conf.d/default.conf:ro

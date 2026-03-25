@@ -37,10 +37,17 @@ Motor de base de datos de series temporales. Utiliza dos buckets principales:
 - `predictions`: Resultados del algoritmo de Zambretti y métricas calculadas.
 
 ### 2. Processor (Python Engine)
-Contenedor dedicado que ejecuta tres tipos de tareas:
+Contenerizado bajo una arquitectura **Multi-stage Build**, lo que optimiza su peso (~515MB) y acelera la reconstrucción de capas de Python (OpenCV, Pandas).
 - **Workers Inotify**: Reaccionan instantáneamente cuando n8n guarda un archivo en el disco.
 - **Cron Jobs**: Tareas programadas como el cálculo de índices cada hora.
-- **OpenCV Engine**: Encargado del tratamiento de imágenes satelitales.
+- **Seguridad**: Ejecuta sus procesos como un usuario no privilegiado (`appuser`) para proteger el host.
 
 ### 3. n8n
 Cerebro de la automatización. Se encarga de conectarse a servidores FTP del SMN, APIs de OpenWeatherMap y repositorios de Amazon S3 (NOAA Big Data).
+
+## 🛡️ Medidas de Seguridad Implementadas
+
+- **Aislamiento de Red:** InfluxDB, n8n y Grafana están vinculados a `127.0.0.1`, siendo inaccesibles desde fuera del host.
+- **Hardening de Nignx:** La galería web corre como usuario `nginx` (no-root) en el puerto 8080.
+- **Control de Tráfico:** Implementación de *Rate Limiting* (3r/s) y *Connection Limiting* para mitigar ataques DoS.
+- **Protección de Datos:** Bloqueo de acceso a archivos ocultos y auditoría de XSS en el frontend.

@@ -6,48 +6,7 @@ Este proyecto implementa el sistema de procesamiento y visualización de datos e
 
 El sistema está diseñado para capturar, procesar y visualizar datos meteorológicos de diversas fuentes en tiempo real.
 
-```mermaid
-graph TD
-    %% Bloque 1: Adquisición
-    subgraph Adquisicion ["1. Adquisición y Orquestación"]
-        A1["Antena / SatDump"] --> D1["Archivos de Datos/Audio"]
-        A2["OpenWeatherMap API"] --> N8N["n8n (Workflow)"]
-        A3["SMN (Web)"] --> N8N
-        N8N --"JSON / TXT"--> RAW_DATA["/raw_data"]
-    end
-
-    %% Bloque 2: Procesamiento
-    subgraph Procesamiento ["2. Motor de Procesamiento"]
-        RAW_DATA --> PROC{{"Processor (Python)"}}
-        RAW_IMG["/raw_images (GOES)"] --> PROC
-        PROC --"Cálculo Métricas"--> METRICS["Variables (Punto Rocío, Zambretti)"]
-        PROC --"Recorte"--> GOES_PNG["/png-images"]
-        DRIVE["Google Drive"] --"Rclone Sync"--> NOAA_PNG["/png-NOAA"]
-    end
-
-    %% Bloque 3: Almacenamiento
-    subgraph Almacenamiento ["3. Almacenamiento"]
-        PROC --"Ingesta"--> INFLUX[("InfluxDB")]
-        GOES_PNG --"Volumen"--> FS[("FS Local")]
-        NOAA_PNG --"Volumen"--> FS
-    end
-
-    %% Bloque 4: Visualización
-    subgraph Visualizacion ["4. Visualización"]
-        INFLUX --> GRAFANA["Grafana (Dashboards)"]
-        FS --> GALLERY["Gallery (Nginx Static)"]
-        GRAFANA --> USER["Usuario Final"]
-        GALLERY --> USER
-    end
-
-    %% Estilos
-    classDef hardware fill:#e0f2fe,stroke:#0369a1,stroke-width:2px;
-    classDef docker fill:#dcfce7,stroke:#15803d,stroke-width:2px;
-    classDef db fill:#fef9c3,stroke:#a16207,stroke-width:2px;
-
-    class N8N,PROC,GALLERY docker;
-    class INFLUX,GRAFANA db;
-```
+![Diagrama de Arquitectura](Diagrama%20PPS.drawio.png)
 
 ## 🚀 Componentes del Sistema
 
@@ -87,10 +46,19 @@ graph TD
 
 | Servicio | URL | Descripción |
 | :--- | :--- | :--- |
-| **n8n** | `http://localhost:5678` | Workflows y automatización |
-| **Grafana** | `http://localhost:3000` | Tableros meteorológicos (admin/admin) |
-| **Galería** | `http://localhost:8080` | Imágenes satelitales (GOES/NOAA) |
-| **InfluxDB** | `http://localhost:8086` | Consola de base de datos |
+| **Galería** | `http://localhost:8080` | Imágenes satelitales (Única expuesta) |
+| **n8n** | `http://127.0.0.1:5678` | Solo acceso local por seguridad |
+| **Grafana** | `http://127.0.0.1:3000` | Solo acceso local por seguridad |
+| **InfluxDB** | `http://127.0.0.1:8086` | Solo acceso local por seguridad |
+
+## ✨ Mejoras Recientes (Marzo 2026)
+
+- **Optimización Docker:** Procesador migrado a *Multi-stage Build* (ahorro de espacio y tiempo).
+- **Lógica de Prioridad:** Sistema de fallback SMN > OWM para la galería web.
+- **Seguridad Avanzada:**
+    - Aislamiento de red para servicios sensibles.
+    - Contenedores corriendo como usuarios sin privilegios (no-root).
+    - Limitación de tráfico y protección contra XSS en Nginx.
 
 ---
 *Este proyecto está diseñado para funcionar de manera autónoma una vez configurado el archivo `.env`.*

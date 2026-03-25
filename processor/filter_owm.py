@@ -61,6 +61,46 @@ def process_owm_data(json_path):
 
         write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
         print(f"-> ¡Datos de OpenWeatherMap [{temp}°C] para el {obs_time} UTC guardados exitosamente!")
+        
+        # Guardar el JSON del clima para la página web
+        try:
+            latest_json_path = "/png-images/latest_weather.json"
+            
+            # Lógica de Prioridad: No sobrescribir SMN si es reciente (< 70 min)
+            should_update = True
+            if os.path.exists(latest_json_path):
+                try:
+                    with open(latest_json_path, 'r') as jf:
+                        existing_data = json.load(jf)
+                    
+                    if existing_data.get("source") == "smn":
+                        last_time = datetime.fromisoformat(existing_data.get("time"))
+                        diff = datetime.now() - last_time
+                        # Si el dato del SMN tiene menos de 70 min, lo respetamos
+                        if diff.total_seconds() < 4200: # 70 minutos
+                            print(f"-> Prioridad SMN: El dato actual es oficial y reciente ({int(diff.total_seconds()/60)} min). No se sobrescribe con OWM.")
+                            should_update = False
+                except Exception as e:
+                    print(f"Advertencia leyendo JSON existente: {e}")
+
+            if should_update:
+                weather_data = {
+                    "station": "Rio Cuarto",
+                    "temperature": float(temp),
+                    "humidity": float(humidity) if humidity else 0.0,
+                    "pressure": float(pressure) if pressure else 0.0,
+                    "wind_speed": float(wind_speed) if wind_speed else 0.0,
+                    "wind_direction": str(wind_deg) if wind_deg else "0",
+                    "time": obs_time.isoformat(),
+                    "source": "owm"
+                }
+                with open(latest_json_path, 'w') as jf:
+                    json.dump(weather_data, jf)
+                print(f"-> Archivo JSON actualizado en {latest_json_path} (Fuente: OWM)")
+            
+        except Exception as j_err:
+            print(f"Error escribiendo latest_weather.json: {j_err}")
+            
         client.close()
 
     except Exception as e:

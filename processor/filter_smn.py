@@ -15,6 +15,7 @@ import zipfile
 import glob
 import shutil
 import tempfile
+import json
 
 HASH_DB_PATH = "/raw_data/.processed_hashes"
 
@@ -175,6 +176,20 @@ def filter_smn_data(filepath):
 
             write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
             print(f"-> ¡Datos reales de SMN {rio_cuarto_data['station']} [{rio_cuarto_data['temperature']}°C] para el {rio_cuarto_data['time']} guardados exitosamente!")
+            
+            # Guardar el JSON del clima para la página web
+            try:
+                latest_json_path = "/png-images/latest_weather.json"
+                # Copiar el diccionario pero convertir el objeto datetime a string
+                json_data = rio_cuarto_data.copy()
+                json_data["time"] = json_data["time"].isoformat()
+                json_data["source"] = "smn"
+                with open(latest_json_path, 'w') as jf:
+                    json.dump(json_data, jf)
+                print(f"-> Archivo JSON actualizado en {latest_json_path}")
+            except Exception as j_err:
+                print(f"Error escribiendo latest_weather.json: {j_err}")
+
             mark_as_processed(file_hash)
             
     except Exception as e:
