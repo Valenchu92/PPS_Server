@@ -109,10 +109,19 @@ if [ -d "$WORKFLOWS_DIR" ]; then
     for wf in "$WORKFLOWS_DIR"/*.json; do
         if [ -f "$wf" ]; then
             FILENAME=$(basename "$wf")
-            echo "  - Importando: $FILENAME"
+            # Obtener el ID del workflow directamente del JSON para activarlo luego
+            # Usamos grep -oP si está disponible, o una alternativa con sed
+            WF_ID=$(grep -o '"id": *"[^"]*"' "$wf" | head -n 1 | sed 's/"id": *"\([^"]*\)"/\1/')
+            
+            echo "  - Importando: $FILENAME (ID: $WF_ID)"
             # Ejecutamos el comando de importación dentro del contenedor de n8n
-            # Nota: la carpeta configs ya está montada en /configs dentro del contenedor
-            docker compose exec -T n8n n8n import:workflow --file "/configs/workflows/$FILENAME" || echo "    ⚠️ Error importando $FILENAME (puede que ya exista o n8n no esté listo)"
+            docker compose exec -T n8n n8n import:workflow --input "/configs/workflows/$FILENAME"
+            
+            # Activamos el flujo (Publish)
+            if [ ! -z "$WF_ID" ]; then
+                echo "  - Activando: $FILENAME"
+                docker compose exec -T n8n n8n publish:workflow --id "$WF_ID" || echo "    ⚠️ Error activando $FILENAME"
+            fi
         fi
     done
 else

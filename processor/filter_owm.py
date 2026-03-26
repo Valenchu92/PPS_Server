@@ -34,6 +34,11 @@ def process_owm_data(json_path):
         wind_speed = data.get("wind", {}).get("speed")
         wind_deg = data.get("wind", {}).get("deg")
         dt = data.get("dt") # Timestamp UTC (Unix)
+        
+        # Extraer estado del tiempo (descripción e icono)
+        weather_info = data.get("weather", [{}])[0]
+        description = weather_info.get("description", "N/A")
+        icon_code = weather_info.get("icon", "")
 
         if temp is None:
             print("Error: El JSON de OWM no contiene datos de temperatura validos.")
@@ -91,6 +96,8 @@ def process_owm_data(json_path):
                     "pressure": float(pressure) if pressure else 0.0,
                     "wind_speed": float(wind_speed) if wind_speed else 0.0,
                     "wind_direction": str(wind_deg) if wind_deg else "0",
+                    "description": description,
+                    "icon": icon_code,
                     "time": obs_time.isoformat(),
                     "source": "owm"
                 }
@@ -101,10 +108,66 @@ def process_owm_data(json_path):
         except Exception as j_err:
             print(f"Error escribiendo latest_weather.json: {j_err}")
             
+        # Siempre intentar actualizar el historial (él mismo decide si sobreescribir o no)
+        update_weather_history(data, obs_time)
+            
         client.close()
 
     except Exception as e:
         print(f"Error procesando OWM: {e}")
+
+def update_weather_history(new_data, obs_time):
+    """
+    Mantiene un historial de los últimos 12 registros en weather_history.json.
+    Lógica Fallback: Solo agrega si NO existe un dato del SMN para esa hora.
+    """
+    history_path = "/png-images/weather_history.json"
+    history = []
+    
+    if os.path.exists(history_path):
+        try:
+            with open(history_path, 'r') as f:
+                history = json.load(f)
+        except:
+            history = []
+
+    new_time_str = obs_time.isoformat()
+    
+    # Buscar si ya existe la misma hora
+    found_index = -1
+    for i, entry in enumerate(history):
+        if entry["time"] == new_time_str:
+            found_index = i
+            break
+    
+    # Si existe y es del SMN, NO hacer nada (respetar prioridad)
+    if found_index != -1 and history[found_index].get("source") == "smn":
+        print(f"-> Historial: Ya existe dato oficial (SMN) para {new_time_str}. Omitiendo OWM.")
+        return
+
+    record = {
+        "time": new_time_str,
+        "temperature": float(new_data.get("main", {}).get("temp")),
+        "humidity": float(new_data.get("main", {}).get("humidity", 0)),
+        "pressure": float(new_data.get("main", {}).get("pressure", 0)),
+        "wind_speed": float(new_data.get("wind", {}).get("speed", 0)),
+        "description": new_data.get("weather", [{}])[0].get("description", "N/A"),
+        "icon": new_data.get("weather", [{}])[0].get("icon", ""),
+        "source": "owm"
+    }
+
+    if found_index != -1:
+        history[found_index] = record
+    else:
+        history.append(record)
+
+    # Ordenar y limitar
+    history.sort(key=lambda x: x["time"])
+    history = history[-12:]
+
+    with open(history_path, 'w') as f:
+        json.dump(history, f)
+    print(f"-> Historial actualizado en {history_path} (Fuente: OWM)")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

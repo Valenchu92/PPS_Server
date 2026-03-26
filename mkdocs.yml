@@ -41,4 +41,5 @@ nav:
       - OpenWeatherMap (API): modulos/owm.md
       - GOES-16 (Satelital): modulos/goes.md
   - Visualización: visualizacion.md
+  - Seguridad: seguridad.md
   - Guía n8n: n8n_guia.md

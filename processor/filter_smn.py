@@ -119,6 +119,9 @@ def filter_smn_data(filepath):
                                     
                                     # Crear objeto datetime (Argentina es UTC-3, sumamos 3 para guardar como UTC real)
                                     observation_time = datetime(year, month, day, hour, minute) + timedelta(hours=3)
+
+                                    # Col 3: Estado del tiempo
+                                    description = cols[3].strip() if len(cols) > 3 else "N/A"
                                 else:
                                     observation_time = datetime.utcnow()
                             except Exception as time_err:
@@ -150,6 +153,7 @@ def filter_smn_data(filepath):
                                     "pressure": pressure or 0.0,
                                     "wind_speed": wind_speed,
                                     "wind_direction": wind_direction,
+                                    "description": description,
                                     "time": observation_time
                                 }
                                 break
@@ -187,6 +191,9 @@ def filter_smn_data(filepath):
                 with open(latest_json_path, 'w') as jf:
                     json.dump(json_data, jf)
                 print(f"-> Archivo JSON actualizado en {latest_json_path}")
+                
+                # Actualizar Historial
+                update_weather_history(rio_cuarto_data)
             except Exception as j_err:
                 print(f"Error escribiendo latest_weather.json: {j_err}")
 
@@ -199,6 +206,53 @@ def filter_smn_data(filepath):
         # Limpieza del directorio temporal si se extrajo un zip
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
+
+def update_weather_history(new_data):
+    """
+    Mantiene un historial de los últimos 12 registros en weather_history.json.
+    Prioriza SMN: si ya existe la hora, la sobreescribe.
+    """
+    history_path = "/png-images/weather_history.json"
+    history = []
+    
+    if os.path.exists(history_path):
+        try:
+            with open(history_path, 'r') as f:
+                history = json.load(f)
+        except:
+            history = []
+
+    # Formatear el nuevo registro
+    record = {
+        "time": new_data["time"].isoformat(),
+        "temperature": new_data["temperature"],
+        "humidity": new_data["humidity"],
+        "pressure": new_data["pressure"],
+        "wind_speed": new_data["wind_speed"],
+        "description": new_data.get("description", "N/A"),
+        "source": "smn"
+    }
+
+    # Buscar si ya existe la misma hora (truncada a la hora) para evitar duplicados
+    # o si es el mismo timestamp exacto
+    new_time_str = record["time"]
+    found = False
+    for i, entry in enumerate(history):
+        if entry["time"] == new_time_str:
+            history[i] = record
+            found = True
+            break
+    
+    if not found:
+        history.append(record)
+
+    # Ordenar por tiempo y mantener solo los últimos 12
+    history.sort(key=lambda x: x["time"])
+    history = history[-12:]
+
+    with open(history_path, 'w') as f:
+        json.dump(history, f)
+    print(f"-> Historial actualizado en {history_path} (12 registros)")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

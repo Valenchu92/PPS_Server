@@ -33,17 +33,32 @@ def mark_as_processed(file_hash):
         f.write(file_hash + "\n")
 
 def process_goes_image(input_path):
-    output_dir = "/png-images"
+    output_base_dir = "/png-images"
     
     # Check if input file exists
     if not os.path.exists(input_path):
         print(f"Error: Input file {input_path} not found.")
         return
 
+    # Extract product type from filename (e.g., goes_geocolor_*.jpg -> geocolor)
+    filename = os.path.basename(input_path)
+    if "geocolor" in filename.lower():
+        product = "geocolor"
+    elif "airmass" in filename.lower():
+        product = "airmass"
+    elif "sandwich" in filename.lower():
+        product = "sandwich"
+    else:
+        product = "geocolor" # Fallback
+
+    output_dir = os.path.join(output_base_dir, product)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+
     # Check Hash to avoid duplicate processing
     file_hash = get_file_hash(input_path)
     if is_already_processed(file_hash):
-        print(f"Skipping: Image {os.path.basename(input_path)} was already processed (Hash match).")
+        print(f"Skipping: Image {filename} was already processed (Hash match).")
         return
 
     print(f"Loading image {input_path} into memory...")
@@ -60,18 +75,18 @@ def process_goes_image(input_path):
         print(f"Error: The image is too small ({width}x{height}) to be cropped at ({X_START},{Y_START}) to ({X_END},{Y_END})")
         return
 
-    print(f"Cropping Córdoba bounding box: X({X_START}-{X_END}) Y({Y_START}-{Y_END})")
+    print(f"Cropping Córdoba bounding box for {product}: X({X_START}-{X_END}) Y({Y_START}-{Y_END})")
     cropped_img = img[Y_START:Y_END, X_START:X_END]
 
     # Generate output filename with timestamp
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_filename = f"goes_cordoba_{timestamp}.png"
+    output_filename = f"goes_{product}_{timestamp}.png"
     output_path = os.path.join(output_dir, output_filename)
 
     # Save cropped image
     success = cv2.imwrite(output_path, cropped_img)
     if success:
-        print(f"Success! Cropped image saved to {output_path}")
+        print(f"Success! Cropped {product} image saved to {output_path}")
         mark_as_processed(file_hash)
     else:
         print("Error: Failed to write output image.")

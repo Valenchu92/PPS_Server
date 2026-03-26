@@ -18,7 +18,10 @@ El sistema está diseñado para capturar, procesar y visualizar datos meteoroló
     *   **Sincronización**: Descarga imágenes NOAA procesadas desde Google Drive vía Rclone.
 3.  **InfluxDB**: Base de datos de series temporales para telemetría y predicciones.
 4.  **Grafana**: Visualización de datos meteorológicos mediante tableros pre-configurados.
-5.  **Gallery (Nginx)**: Interfaz web simple para visualizar las imágenes recortadas de GOES y NOAA.
+5.  **Gallery (Nginx)**: Interfaz web para visualización de datos e imágenes, incluyendo:
+    - 🌦️ **Módulo Meteorológico:** Reporte en tiempo real (SMN) con fallback automático a OpenWeatherMap (OWM).
+    - 📈 **Gráficos Históricos:** Visualización interactiva de las últimas 12 mediciones para temperatura, viento y presión.
+    - 🎞️ **Animación Satelital:** Reproducción secuencial de las últimas 10 imágenes del GOES-19 con pre-carga optimizada.
 
 ## 📂 Estructura de Directorios
 

@@ -6,8 +6,8 @@
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "triggerAtMinute": 30
+              "field": "minutes",
+              "minutesInterval": 20
             }
           ]
         }

@@ -16,6 +16,13 @@ services:
       - N8N_RESTRICT_FILE_ACCESS_TO=/raw_images;/raw_data
       - OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY:-}
       - OPENWEATHERMAP_CITY=${OPENWEATHERMAP_CITY:-Rio Cuarto,AR}
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     restart: unless-stopped
 
   processor:
@@ -37,6 +44,13 @@ services:
       - INFLUX_BUCKET_PREDICTIONS=${INFLUXDB_BUCKET_PREDICTIONS:-predictions}
       - METEOROLOGY_ALTITUDE=${METEOROLOGY_ALTITUDE:-441}
       - RCLONE_GDRIVE_PATH=${RCLONE_GDRIVE_PATH:-images_pps}
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
     depends_on:
       - influxdb
     restart: unless-stopped
@@ -57,6 +71,13 @@ services:
       - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_INIT_ADMIN_TOKEN:-my-super-secret-auth-token}
       - INFLUXD_UI_DISABLED=true
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
     restart: unless-stopped
 
   grafana:
@@ -67,6 +88,13 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
       - ${HOST_CONFIG_DIR:-./configs}/grafana/provisioning:/etc/grafana/provisioning:ro
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     depends_on:
       - influxdb
     restart: unless-stopped
@@ -77,10 +105,22 @@ services:
     ports:
       - "${GALLERY_PORT:-8080}:8080"
     volumes:
-      - ./gallery-ui:/var/www/html
+      - ./gallery-ui:/var/www/html:ro
       - ${HOST_PNG_OUTPUT_DIR:-./png-images}:/var/www/html/goes:ro
       - ${HOST_PNG_NOAA_DIR:-./png-NOAA}:/var/www/html/noaa:ro
       - ${HOST_CONFIG_DIR:-./configs}/gallery/default.conf:/etc/nginx/conf.d/default.conf:ro
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
     restart: unless-stopped
 
 volumes:

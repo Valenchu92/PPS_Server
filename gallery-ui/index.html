@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="background-glow"></div>
@@ -28,7 +29,12 @@
                 <div class="image-viewer card">
                     <div class="card-header">
                         <div class="status-badge">
-                            <span class="pulse"></span> EN VIVO: GOES-19
+                            <span class="pulse"></span> EN VIVO: GOES-16
+                        </div>
+                        <div class="product-tabs">
+                            <button class="prod-tab active" data-product="geocolor">GeoColor</button>
+                            <button class="prod-tab" data-product="airmass">AirMass</button>
+                            <button class="prod-tab" data-product="sandwich">Sandwich</button>
                         </div>
                         <h2 id="image-timestamp">Satélite SatStream</h2>
                     </div>
@@ -37,7 +43,14 @@
                         <div id="image-loader" class="loader"></div>
                     </div>
                     <div class="card-footer">
-                        <p>Sector: Córdoba, Argentina (Recorte SSA)</p>
+                        <div class="footer-info">
+                            <p>Sector: Córdoba, Argentina (Recorte SSA)</p>
+                        </div>
+                        <div class="animation-controls">
+                            <button id="btn-animate" class="btn-primary">
+                                <span class="btn-icon">▶</span> Reproducir Secuencia
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -67,6 +80,17 @@
                             </div>
                         </div>
                         <div class="data-source">Fuente: SMN Argentina</div>
+                    </div>
+
+                    <div class="history-card card">
+                        <div class="tabs">
+                            <button class="tab-btn active" data-type="temp">Temperatura</button>
+                            <button class="tab-btn" data-type="wind">Viento</button>
+                            <button class="tab-btn" data-type="press">Presión</button>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="weather-chart"></canvas>
+                        </div>
                     </div>
 
 
