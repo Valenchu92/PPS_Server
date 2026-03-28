@@ -1,25 +1,32 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PPS SatStream - Visualización en Tiempo Real</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
     <div class="background-glow"></div>
-    
+
     <header>
         <div class="container">
             <div class="logo">
                 <span class="logo-icon">📡</span>
                 <h1>SatStream<span>PRO</span></h1>
             </div>
-            <nav id="last-update">Actualizando...</nav>
+            <div class="header-clocks">
+                <nav id="last-update">Actualizando...</nav>
+                <div id="local-clock" class="local-clock">--:-- local</div>
+            </div>
         </div>
     </header>
 
@@ -29,12 +36,18 @@
                 <div class="image-viewer card">
                     <div class="card-header">
                         <div class="status-badge">
-                            <span class="pulse"></span> EN VIVO: GOES-16
+                            <span class="pulse"></span> EN VIVO: GOES-19
                         </div>
                         <div class="product-tabs">
-                            <button class="prod-tab active" data-product="geocolor">GeoColor</button>
-                            <button class="prod-tab" data-product="airmass">AirMass</button>
-                            <button class="prod-tab" data-product="sandwich">Sandwich</button>
+                            <button class="prod-tab active" data-product="geocolor">
+                                GeoColor <span>(Color Real)</span>
+                            </button>
+                            <button class="prod-tab" data-product="airmass">
+                                AirMass <span>(Humedad)</span>
+                            </button>
+                            <button class="prod-tab" data-product="sandwich">
+                                Sandwich <span>(Severidad)</span>
+                            </button>
                         </div>
                         <h2 id="image-timestamp">Satélite SatStream</h2>
                     </div>
@@ -44,7 +57,13 @@
                     </div>
                     <div class="card-footer">
                         <div class="footer-info">
-                            <p>Sector: Córdoba, Argentina (Recorte SSA)</p>
+                            <p>Sector: Centro de Argentina (Río Cuarto y alrededores)</p>
+                            <p class="legend"><span class="box-green"></span> Zona Urbana Río Cuarto</p>
+                            <a id="product-doc-link"
+                                href="https://www.star.nesdis.noaa.gov/GOES/documents/QuickGuide_CIRA_Geocolor_20171019.pdf"
+                                target="_blank" class="doc-link">
+                                📄 Documentación oficial NASA/NOAA
+                            </a>
                         </div>
                         <div class="animation-controls">
                             <button id="btn-animate" class="btn-primary">
@@ -55,6 +74,31 @@
                 </div>
 
                 <aside class="side-content">
+                    <div id="nowcast-alert-card" class="card alert-card hidden">
+                        <div class="alert-header">
+                            <span class="alert-icon">🌀</span>
+                            <h3>Pronóstico a corto plazo</h3>
+                        </div>
+                        <div class="alert-body">
+                            <div class="alert-level">
+                                <div id="alert-semaphore" class="semaphore level-0"></div>
+                                <div class="alert-text">
+                                    <span id="alert-status">Analizando...</span>
+                                    <small id="alert-condition">Cargando proyecciones</small>
+                                </div>
+                            </div>
+                            <div class="alert-projection">
+                                <div class="proj-item">
+                                    <label>A 1 Hora</label>
+                                    <span id="proj-1h">--</span>
+                                </div>
+                                <div class="proj-item">
+                                    <label>A 2 Horas</label>
+                                    <span id="proj-2h">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="weather-card card">
                         <h3>Clima Actual</h3>
                         <p class="location">Estación: Río Cuarto</p>
@@ -71,12 +115,18 @@
                                 <span id="current-hum" class="val">--%</span>
                             </div>
                             <div class="detail">
-                                <span class="label">Presión</span>
+                                <span class="label">Presión <span id="press-trend-icon"></span></span>
                                 <span id="current-press" class="val">-- hPa</span>
+                                <small id="press-label" class="h-text"></small>
                             </div>
                             <div class="detail">
                                 <span class="label">Viento</span>
                                 <span id="current-wind" class="val">-- km/h</span>
+                                <small id="wind-label" class="h-text"></small>
+                            </div>
+                            <div class="detail">
+                                <span class="label">Punto de Rocío</span>
+                                <span id="current-dew" class="val">-- °C</span>
                             </div>
                         </div>
                         <div class="data-source">Fuente: SMN Argentina</div>
@@ -110,4 +160,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>

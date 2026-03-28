@@ -33,7 +33,7 @@ STORM_LEVELS = [
     },
     {
         "level": 1,
-        "name": "Nubosidad Genérica",
+        "name": "Mayormente Nublado",
         "desc": "Cielo nuboso. Baja o nula probabilidad de lluvia.",
         "hsv_ranges": [[(0, 0, 180), (180, 45, 255)]] # GRAYS / WHITES (Low saturation, High brightness)
     }
@@ -128,8 +128,8 @@ def run_nowcast():
     flow = cv2.addWeighted(flow_recent, 0.7, flow_prev, 0.3, 0)
     
     # Evaluar horizonte a 1_hora y 2_horas
-    impact_1h = {"level": 0, "name": "Cielo Mayormente Despejado", "desc": "Sin nubes relevantes en aproximación."}
-    impact_2h = {"level": 0, "name": "Cielo Mayormente Despejado", "desc": "Sin nubes relevantes en aproximación."}
+    impact_1h = {"level": 0, "name": "Cielo Despejado", "desc": "Sin nubes relevantes en aproximación."}
+    impact_2h = {"level": 0, "name": "Cielo Despejado", "desc": "Sin nubes relevantes en aproximación."}
     
     # Evaluar en cascada: De Peor (4) a Menos Peligroso (1)
     for lvl in STORM_LEVELS:
@@ -169,6 +169,20 @@ def run_nowcast():
     try:
         write_api.write(bucket=bucket, org=org, record=pt)
         print("-> [DB] Proyecciones guardadas exitosamente en InfluxDB.")
+        
+        # EXPORTACIÓN JSON PARA GALERÍA (UX)
+        import json
+        prediction_data = {
+            "location": "Rio Cuarto",
+            "time": datetime.utcnow().isoformat(),
+            "severity_1h": impact_1h["level"],
+            "condition_1h": impact_1h["name"],
+            "severity_2h": impact_2h["level"],
+            "condition_2h": impact_2h["name"]
+        }
+        with open("/png-images/latest_predictions.json", "w") as f:
+            json.dump(prediction_data, f)
+            
     except Exception as e:
         print(f"-> [ERROR DB] Falló la subida a InfluxDB: {e}")
     finally:

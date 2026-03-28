@@ -155,7 +155,7 @@ def calculate_metrics():
         print(f"-> Tendencia de Presión (3h): {pressure_delta:.2f} hPa ({trend_text})")
 
     # c. Algoritmo Zambretti
-    p_slp = get_slp(P) if P else 1013.25
+    p_slp = P if P else 1013.25
     z_code, z_phrase = calculate_zambretti(p_slp, trend_text, W_DIR)
     print(f"-> Pronóstico Zambretti: {z_phrase} (Code: {z_code})")
 
@@ -173,6 +173,20 @@ def calculate_metrics():
     try:
         write_api.write(bucket=INFLUX_BUCKET_PREDICTIONS, org=org, record=point)
         print(f"-> Índices guardados exitosamente en {INFLUX_BUCKET_PREDICTIONS}")
+        
+        # EXPORTACIÓN JSON PARA GALERÍA (UX)
+        import json
+        indexes_data = {
+            "time": datetime.utcnow().isoformat(),
+            "dew_point": round(float(dew_point), 1) if dew_point else 0.0,
+            "pressure_trend_value": round(float(pressure_delta), 1),
+            "pressure_trend_text": trend_text,
+            "zambretti_code": z_code,
+            "zambretti_phrase": z_phrase
+        }
+        with open("/png-images/latest_indexes.json", "w") as f:
+            json.dump(indexes_data, f)
+            
     except Exception as e:
         print(f"Error al guardar predicciones: {e}")
 

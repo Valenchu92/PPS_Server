@@ -124,11 +124,17 @@ def filter_smn_data(filepath):
                             wind_direction = " ".join(wind_str[:-1]) if len(wind_str) > 1 else "Desconocido"
                             
                             if temperature is not None:
+                                # NORMALIZACIÓN DE PRESIÓN:
+                                # El SMN informa presión de estación (Pst). Pasamos a nivel del mar (SLP).
+                                altitude = float(os.environ.get("METEOROLOGY_ALTITUDE", 441))
+                                pressure_slp = pressure + (altitude / 8.5) if pressure else 0.0
+
                                 rio_cuarto_data = {
                                     "station": "Rio Cuarto",
                                     "temperature": temperature,
                                     "humidity": humidity or 0.0,
-                                    "pressure": pressure or 0.0,
+                                    "pressure": pressure_slp,
+                                    "pressure_raw": pressure or 0.0,
                                     "wind_speed": wind_speed,
                                     "wind_direction": wind_direction,
                                     "description": description,
@@ -152,6 +158,7 @@ def filter_smn_data(filepath):
                 .field("temperature", rio_cuarto_data["temperature"])
                 .field("humidity", rio_cuarto_data["humidity"])
                 .field("pressure", rio_cuarto_data["pressure"])
+                .field("pressure_raw", rio_cuarto_data["pressure_raw"])
                 .field("wind_speed", rio_cuarto_data["wind_speed"])
                 .field("wind_direction", rio_cuarto_data["wind_direction"])
                 .time(rio_cuarto_data["time"], WritePrecision.NS)

@@ -10,6 +10,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentHum = document.getElementById('current-hum');
     const currentPress = document.getElementById('current-press');
     const currentWind = document.getElementById('current-wind');
+    const currentDew = document.getElementById('current-dew'); // NEW
+    const localClock = document.getElementById('local-clock'); // NEW
+
+    // Humanized elements
+    const pressTrendIcon = document.getElementById('press-trend-icon');
+    const pressLabel = document.getElementById('press-label');
+    const windLabel = document.getElementById('wind-label');
+
+    // Alert elements
+    const alertCard = document.getElementById('nowcast-alert-card');
+    const alertSemaphore = document.getElementById('alert-semaphore');
+    const alertStatus = document.getElementById('alert-status');
+    const alertCondition = document.getElementById('alert-condition');
+    const proj1h = document.getElementById('proj-1h');
+    const proj2h = document.getElementById('proj-2h');
 
     let animationInterval = null;
     let isAnimating = false;
@@ -18,6 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentProduct = 'geocolor'; // Default GOES product
     const btnAnimate = document.getElementById('btn-animate');
     const productTabs = document.querySelectorAll('.prod-tab');
+    const docLink = document.getElementById('product-doc-link');
+
+    const productDocs = {
+        'geocolor': 'https://www.star.nesdis.noaa.gov/GOES/documents/QuickGuide_CIRA_Geocolor_20171019.pdf',
+        'airmass': 'https://www.star.nesdis.noaa.gov/GOES/documents/QuickGuide_GOESR_AirMassRGB_final.pdf',
+        'sandwich': 'https://www.star.nesdis.noaa.gov/GOES/documents/SandwichProduct.pdf'
+    };
 
     async function fetchGalleryData() {
         try {
@@ -62,6 +84,74 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.warn('Weather data not available yet');
         }
+        
+        // 3. Fetch Prediction data (Nowcast)
+        fetchPredictionData();
+        
+        // 4. Fetch Index data (Zambretti/DewPoint)
+        fetchIndexData();
+    }
+
+    async function fetchPredictionData() {
+        try {
+            const response = await fetch('/goes/latest_predictions.json');
+            if (response.ok) {
+                const data = await response.json();
+                updateAlertUI(data);
+            }
+        } catch (e) { console.warn("Predictions not ready"); }
+    }
+
+    async function fetchIndexData() {
+        try {
+            const response = await fetch('/goes/latest_indexes.json');
+            if (response.ok) {
+                const data = await response.json();
+                updateIndexUI(data);
+            }
+        } catch (e) { console.warn("Indexes not ready"); }
+    }
+
+    function updateAlertUI(data) {
+        if (!data || !alertStatus) return;
+        
+        alertCard.classList.remove('hidden');
+        
+        // Map severity to text and color
+        const levels = {
+            0: { txt: "NORMAL", color: "level-0" },
+            1: { txt: "NORMAL", color: "level-1" },
+            2: { txt: "ATENCIÓN", color: "level-2" },
+            3: { txt: "ALERTA", color: "level-3" },
+            4: { txt: "EXTREMO", color: "level-4" }
+        };
+        
+        const mainLevel = data.severity_2h || 0;
+        const config = levels[mainLevel] || levels[0];
+        
+        alertStatus.textContent = config.txt;
+        alertCondition.textContent = data.condition_2h || "Sin cambios significativos";
+        
+        // Reset and set semaphore color
+        alertSemaphore.className = 'semaphore ' + config.color;
+        
+        proj1h.textContent = data.condition_1h;
+        proj2h.textContent = data.condition_2h;
+    }
+
+    function updateIndexUI(data) {
+        if (!data) return;
+        if (currentDew) currentDew.textContent = data.dew_point + " °C";
+        
+        // Update pressure trend icon
+        if (pressTrendIcon) {
+            const val = data.pressure_trend_value;
+            if (val > 0.5) pressTrendIcon.textContent = "↑";
+            else if (val < -0.5) pressTrendIcon.textContent = "↓";
+            else pressTrendIcon.textContent = "→";
+        }
+        
+        if (pressLabel) pressLabel.textContent = data.pressure_trend_text;
     }
 
     function preloadSequence() {
@@ -142,8 +232,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateWeatherUI(data) {
         currentTemp.textContent = Math.round(data.temperature);
         currentHum.textContent = `${data.humidity}%`;
-        currentPress.textContent = `${data.pressure} hPa`;
+        currentPress.textContent = `${Math.round(data.pressure)} hPa`;
         currentWind.textContent = `${data.wind_speed} km/h`;
+        
+        // Beaufort Scale for non-experts
+        if (windLabel) {
+            const speed = data.wind_speed;
+            let label = "Calma";
+            if (speed > 5 && speed <= 11) label = "Brisa Leve";
+            else if (speed > 11 && speed <= 19) label = "Brisa Ligera";
+            else if (speed > 19 && speed <= 28) label = "Brisa Moderada";
+            else if (speed > 28 && speed <= 38) label = "Brisa Fresca";
+            else if (speed > 38 && speed <= 49) label = "Viento Fuerte";
+            else if (speed > 49) label = "Temporal";
+            windLabel.textContent = label;
+        }
         
         // Update data source text AND observation time
         const dataSource = document.querySelector('.data-source');
@@ -298,9 +401,26 @@ document.addEventListener('DOMContentLoaded', () => {
             tab.classList.add('active');
             
             currentProduct = tab.dataset.product;
+            
+            // Update documentation link
+            if (docLink && productDocs[currentProduct]) {
+                docLink.href = productDocs[currentProduct];
+                console.log("Cambiando enlace de doc a:", currentProduct, productDocs[currentProduct]);
+            }
+            
             fetchGalleryData(); // Fetch new list for this product
         });
     });
+
+    // Local Clock logic
+    function updateLocalClock() {
+        const now = new Date();
+        const localTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (localClock) localClock.textContent = localTimeStr + " local";
+    }
+    
+    setInterval(updateLocalClock, 1000);
+    updateLocalClock();
 
     // Initial load
     initChart();
