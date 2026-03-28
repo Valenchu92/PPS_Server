@@ -6,7 +6,7 @@ El sistema descarga y procesa imágenes de banda infrarroja y visible del satél
 El procesador realiza un **Crop (recorte)** automático centrado en la región de Río Cuarto.
 
 ## ⚙️ Flujo de Trabajo
-1. **Descarga**: n8n descarga la imagen (`.jpg` o `.png`) desde los servidores de NOAA y la guarda en `/raw_images`.
+1. **Descarga**: El script `fetch_goes.py` baja la imagen (`.jpg` o `.png`) desde los servidores de NOAA de forma automática y la guarda en `/raw_images`.
 2. **Procesamiento (`crop_goes.py`)**:
    - Detecta la imagen.
    - Aplica coordenadas de recorte específicas para Argentina / Río Cuarto.

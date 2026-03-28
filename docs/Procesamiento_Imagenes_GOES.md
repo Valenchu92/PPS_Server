@@ -11,15 +11,14 @@ La fuente de datos de NOAA proporciona imágenes de altísima definición (7200x
 
 ## 2. Arquitectura del Pipeline
 
-El sistema involucra tres componentes principales:
-- **n8n:** Ejecuta la descarga programada.
-- **Processor:** Detecta archivos nuevos y ejecuta la lógica OpenCV.
+El sistema involucra dos componentes principales:
+- **Processor (Python):** Se encarga tanto de ejecutar la descarga periódica de NOAA con `fetch_goes.py`, como de detectar el nuevo archivo y aplicarle el recorte mediante OpenCV.
 - **Gallery (Nginx):** Sirve las imágenes resultantes.
 
 ### Flujo de Trabajo
 
-1.  **Descarga Programada (n8n):**
-    Un workflow descarga la imagen Geocolor SSA (7200x4320) cada 10 minutos y la deposita en `/raw_images`.
+1.  **Descarga Programada (`fetch_goes.py`):**
+    El motor de Python ejecuta este downloader nativo en segundo plano de forma continua. Descarga la imagen Geocolor SSA (7200x4320) cada 10 minutos y la deposita en `/raw_images`.
 
 2.  **Detección por Inotify (Processor):**
     El motor en Python está "escuchando" eventos en el filesystem. Al finalizar la escritura del JPG gigante, dispara el script de procesamiento.
@@ -39,4 +38,4 @@ El sistema involucra tres componentes principales:
 
 ## 3. Configuración
 
-Todo el proceso está automatizado por el script `setup.sh`. Asegúrate de que las variables de entorno en `.env` (puertos y rutas) sean las correctas. No se requiere configuración manual adicional para este módulo una vez que los contenedores están arriba.
+Todo el proceso está automatizado por el script `inicializador.sh`. Asegúrate de que las variables de entorno en `.env` (puertos y rutas) sean las correctas. No se requiere configuración manual adicional para este módulo una vez que los contenedores están arriba.

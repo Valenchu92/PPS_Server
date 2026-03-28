@@ -7,45 +7,59 @@
 # Ideal para entornos donde no se requiere intervención manual pesada.
 # ==============================================================================
 
-set -e # Detener script si algún comando falla
+# Símbolos y Colores
+if [[ "$LANG" == *".UTF-8"* ]] || [[ "$LC_ALL" == *".UTF-8"* ]]; then
+    S_START="🚀"; S_SEARCH="🔍"; S_ERR="❌"; S_OK="✅"; S_FILE="📄"; S_WARN="⚠️"; S_DIR="📂"; S_CLOUD="☁️"; S_DOCKER="🐳"; S_WAIT="⏳"; S_GEAR="⚙️"; S_SPARK="✨"
+else
+    S_START="[#]"; S_SEARCH="[?]"; S_ERR="[X]"; S_OK="[V]"; S_FILE="[F]"; S_WARN="[!]"; S_DIR="[D]"; S_CLOUD="[C]"; S_DOCKER="[P]"; S_WAIT="[.]"; S_GEAR="[*]"; S_SPARK="[*]"
+fi
 
-echo "🚀 Iniciando configuración del entorno Server..."
+set -e
 
-# 1. Verificar dependencias
-echo "🔍 Verificando dependencias..."
+echo "$S_START Iniciando configuración del entorno Server..."
+
+# 1. Verificar dependencias y permisos
+echo "$S_SEARCH Verificando dependencias y permisos..."
 for req in docker curl unzip; do
     if ! command -v $req &> /dev/null; then
-        echo "❌ Error: $req no está instalado. Por favor instálalo primero."
+        echo "$S_ERR Error: $req no está instalado."
         exit 1
     fi
 done
 
+# Verificar permisos de Docker
+if ! docker ps &> /dev/null; then
+    echo "$S_ERR Error: No tienes permisos para usar Docker."
+    echo "   Prueba con 'sudo $0' o agrega tu usuario al grupo: 'sudo usermod -aG docker \$USER' (luego reinicia sesión)"
+    exit 1
+fi
+
 # Check docker compose version
 if ! docker compose version &> /dev/null; then
-  echo "❌ Error: Docker Compose v2 no encontrado."
+  echo "$S_ERR Error: Docker Compose v2 no encontrado."
   exit 1
 fi
-echo "✅ Dependencias correctas."
+echo "$S_OK Dependencias y permisos correctos."
 
 # 2. Configurar variables de entorno si no existen
 if [ ! -f .env ]; then
-    echo "📄 Creando archivo .env a partir de .env.template..."
+    echo "$S_FILE Creando archivo .env a partir de .env.template..."
     cp .env.template .env
-    echo "⚠️ Por favor, revisa el archivo .env para asegurar que las credenciales son seguras."
+    echo "$S_WARN Por favor, revisa el archivo .env para asegurar que las credenciales son seguras."
 else
-    echo "✅ Archivo .env existente detectado. Usando configuración actual."
+    echo "$S_OK Archivo .env existente detectado. Usando configuración actual."
 fi
 
 source .env
 
 # 3. Validar variables mínimas obligatorias
 if [ -z "$INFLUXDB_INIT_ADMIN_TOKEN" ]; then
-    echo "❌ Error: INFLUXDB_INIT_ADMIN_TOKEN no está definido."
+    echo "$S_ERR Error: INFLUXDB_INIT_ADMIN_TOKEN no está definido."
     exit 1
 fi
 
 # 4. Crear estructura de carpetas locales para volumenes
-echo "📂 Creando estructura de directorios..."
+echo "$S_DIR Creando estructura de directorios..."
 DIRECTORIES=(
     "${HOST_PNG_OUTPUT_DIR:-./png-images}"
     "${HOST_PNG_NOAA_DIR:-./png-NOAA}"
@@ -69,7 +83,7 @@ for DIR in "${DIRECTORIES[@]}"; do
 done
 
 # 5. Opcional: Configurar rclone 
-echo "☁️ Configuración de Google Drive (Opcional)"
+echo "$S_CLOUD Configuración de Google Drive (Opcional)"
 if [ ! -f "${HOST_CONFIG_DIR:-./configs}/rclone/rclone.conf" ]; then
     read -p "   ¿Deseas configurar rclone para Google Drive ahora? (S/n): " auth_rclone
     if [[ "$auth_rclone" =~ ^[Ss]$ ]] || [[ -z "$auth_rclone" ]]; then
@@ -91,48 +105,36 @@ if [ ! -f "${HOST_CONFIG_DIR:-./configs}/rclone/rclone.conf" ]; then
         echo "   ⏩ Omitiendo configuración de Google Drive."
     fi
 else
-    echo "   ✅ Configuración de rclone.conf ya detectada."
+    echo "   $S_OK Configuración de rclone.conf ya detectada."
 fi
 
 # 6. Levantar todo el stack con Docker Compose
-echo "🐳 Construyendo e iniciando contenedores Docker..."
+echo "$S_DOCKER Construyendo e iniciando contenedores Docker..."
 docker compose build
 docker compose up -d
 
-# 7. Esperar a n8n e importar workflows automáticamente
-echo "⏳ Esperando a que los servicios arranquen para importar workflows... (20 segundos)"
-sleep 20
+echo "$S_WAIT Esperando a que InfluxDB esté completamente operativo..."
+RETRIES=30
+until docker compose exec -T influxdb influx ping &> /dev/null || [ $RETRIES -eq 0 ]; do
+    echo -n "."
+    sleep 2
+    RETRIES=$((RETRIES-1))
+done
+echo ""
 
-WORKFLOWS_DIR="${HOST_CONFIG_DIR:-./configs}/workflows"
-if [ -d "$WORKFLOWS_DIR" ]; then
-    echo "⚙️ Importando workflows de n8n desde $WORKFLOWS_DIR..."
-    for wf in "$WORKFLOWS_DIR"/*.json; do
-        if [ -f "$wf" ]; then
-            FILENAME=$(basename "$wf")
-            # Obtener el ID del workflow directamente del JSON para activarlo luego
-            # Usamos grep -oP si está disponible, o una alternativa con sed
-            WF_ID=$(grep -o '"id": *"[^"]*"' "$wf" | head -n 1 | sed 's/"id": *"\([^"]*\)"/\1/')
-            
-            echo "  - Importando: $FILENAME (ID: $WF_ID)"
-            # Ejecutamos el comando de importación dentro del contenedor de n8n
-            docker compose exec -T n8n n8n import:workflow --input "/configs/workflows/$FILENAME"
-            
-            # Activamos el flujo (Publish)
-            if [ ! -z "$WF_ID" ]; then
-                echo "  - Activando: $FILENAME"
-                docker compose exec -T n8n n8n publish:workflow --id "$WF_ID" || echo "    ⚠️ Error activando $FILENAME"
-            fi
-        fi
-    done
+if [ $RETRIES -eq 0 ]; then
+    echo "$S_WARN Precaución: InfluxDB tardó demasiado. Revisa si los buckets extra se crearon."
 else
-    echo "⚠️ Directorio de workflows no encontrado. Omitiendo importación."
+    docker compose exec -T influxdb influx bucket create --name "${INFLUXDB_BUCKET_INDEXES:-indexes}" --org "${INFLUXDB_INIT_ORG:-noaa_org}" --token "${INFLUXDB_INIT_ADMIN_TOKEN}" &>/dev/null || true
+    docker compose exec -T influxdb influx bucket create --name "${INFLUXDB_BUCKET_PREDICTIONS:-predictions}" --org "${INFLUXDB_INIT_ORG:-noaa_org}" --token "${INFLUXDB_INIT_ADMIN_TOKEN}" &>/dev/null || true
+    echo "$S_OK Buckets extra verificados/creados."
 fi
 
+
 echo "=============================================================================="
-echo "✨ ¡ENTORNO DESPLEGADO CON ÉXITO! ✨"
+echo "$S_SPARK ¡ENTORNO DESPLEGADO CON ÉXITO! $S_SPARK"
 echo "=============================================================================="
 echo "Siguientes pasos:"
-echo "1. Accede a n8n en: http://localhost:${N8N_PORT:-5678} para configurar los fetchers."
 echo "2. Accede a Grafana en: http://localhost:${GRAFANA_PORT:-3000} (admin/admin)."
 echo "3. Revisa los logs de Processor: docker compose logs -f processor"
 echo "4. Accede a la Galería estática en: http://localhost:${GALLERY_PORT:-8080}."

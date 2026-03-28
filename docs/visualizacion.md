@@ -26,4 +26,4 @@ Un servidor Nginx liviano que permite ver los últimos recortes satelitales y el
 `http://localhost:8080` (Puerto 8080 mapeado al 8080 interno del contenedor).
 
 ## 🔔 Alertas
-InfluxDB y Grafana están preparados para configurar alertas (ej: caída brusca de presión) que pueden ser enviadas vía n8n a Telegram o Email.
+InfluxDB y Grafana están preparados para configurar alertas (ej: caída brusca de presión) que pueden ser enviadas a través de las capacidades nativas de Grafana hacia Telegram o Email.

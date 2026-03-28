@@ -1,5 +1,5 @@
 # --- Stage 1: Builder ---
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
 
 # Install tools needed for downloading/extracting
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -41,7 +41,7 @@ RUN pip install --no-cache-dir \
 WORKDIR /app
 
 # Copy scripts and set ownership
-COPY --chown=appuser:appuser calculate_metrics.py download_cloud.py crop_goes.py filter_smn.py filter_owm.py entrypoint.sh /app/
+COPY --chown=appuser:appuser calculate_metrics.py download_cloud.py crop_goes.py filter_smn.py filter_owm.py fetch_goes.py fetch_owm.py fetch_smn.py entrypoint.sh /app/
 
 RUN chmod +x /app/entrypoint.sh
 

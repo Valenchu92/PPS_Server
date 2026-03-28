@@ -7,15 +7,16 @@ mkdir -p /raw_data
 mkdir -p /png-images
 mkdir -p /png-NOAA
 
-echo "Setting up CRON tasks..."
-# 1. Download Cloud (Rclone) every 3 hours
-echo "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" > /etc/cron.d/processor_crons
-echo "0 */3 * * * python3 /app/download_cloud.py >> /proc/1/fd/1 2>&1" >> /etc/cron.d/processor_crons
-echo "0 * * * * python3 /app/calculate_metrics.py >> /proc/1/fd/1 2>&1" >> /etc/cron.d/processor_crons
+echo "Setting up periodic tasks..."
+# Tareas originales
+(while true; do python3 /app/download_cloud.py; sleep 10800; done) &
+(while true; do python3 /app/calculate_metrics.py; sleep 3600; done) &
 
-chmod 0644 /etc/cron.d/processor_crons
-crontab /etc/cron.d/processor_crons
-service cron start
+# Nuevos Fetchers Nativos 
+(while true; do python3 /app/fetch_goes.py; sleep 600; done) &
+(while true; do python3 /app/fetch_smn.py; sleep 1200; done) &
+(while true; do python3 /app/fetch_owm.py; sleep 1800; done) &
+
 
 echo "Watches established. Listening for new files..."
 # Loop to watch for new files in BOTH directories concurrently

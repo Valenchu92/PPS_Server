@@ -20,7 +20,6 @@ cp .env.template .env
 
 | Variable | Descripción | Valor por Defecto |
 | :--- | :--- | :--- |
-| `N8N_PORT` | Puerto para la interfaz de n8n | `5678` |
 | `GRAFANA_PORT` | Puerto para los tableros de Grafana | `3000` |
 | `INFLUXDB_INIT_ADMIN_TOKEN` | Token de acceso para InfluxDB | `my-super-secret-auth-token` |
 | `METEOROLOGY_ALTITUDE` | Altitud local (m) para corrección de presión | `441` |
@@ -32,10 +31,10 @@ cp .env.template .env
 
 ## 🚀 Paso 2: Ejecutar el Setup
 
-El script `setup.sh` se encarga de crear la estructura de carpetas, validar las dependencias y levantar los contenedores.
+El script `inicializador.sh` se encarga de crear la estructura de carpetas, validar las dependencias y levantar los contenedores.
 
 ```bash
-./setup.sh
+./inicializador.sh
 ```
 
 ### ¿Qué hace este script?
@@ -56,8 +55,6 @@ Accede a `http://localhost:3000`.
 - **Password**: (definido en el `.env`)
 Los tableros y la base de datos se cargan automáticamente gracias al sistema de **Provisioning**.
 
-### n8n
-Accede a `http://localhost:5678`. Deberás importar los workflows ubicados en `configs/workflows` para comenzar a recibir datos reales.
 
 ## 🩺 Resolución de Problemas
 

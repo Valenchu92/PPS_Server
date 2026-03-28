@@ -8,7 +8,7 @@ Bienvenido a la documentación oficial del Servidor de Procesamiento Meteorológ
 - **Predicción Local**: Algoritmo de Zambretti adaptado al hemisferio sur para pronósticos de corto plazo (24h).
 - **Procesamiento Satelital**: Adquisición y recorte automático de imágenes del satélite GOES-16.
 - **Visualización Profesional**: Dashboards en Grafana con comparación de fuentes en tiempo real.
-- **Automatización Total**: Flujos de trabajo gestionados por n8n y contenedores Docker.
+- **Automatización Total**: Flujos de trabajo gestionados nativamente por scripts en Python dentro de contenedores Docker.
 
 ## 📋 Resumen del Stack Tecnológico
 
@@ -16,7 +16,7 @@ Bienvenido a la documentación oficial del Servidor de Procesamiento Meteorológ
 | :--- | :--- | :--- |
 | **Base de Datos** | InfluxDB 2.x | Almacenamiento de series temporales (Telemetría) |
 | **Visualización** | Grafana | Dashboards interactivos y alertas |
-| **Automatización** | n8n | Orquestación de descargas y APIs |
+| **Automatización** | Python Scripts | Descargas programadas en bucle |
 | **Procesador** | Python 3.12 (Docker) | Lógica de cálculo, filtrado y OpenCV |
 | **Galería** | Nginx | Servidor web para imágenes procesadas |
 
@@ -25,5 +25,5 @@ Bienvenido a la documentación oficial del Servidor de Procesamiento Meteorológ
 Para poner en marcha el servidor por primera vez, consulta la [Guía de Instalación](configuracion.md).
 
 ```bash
-./setup.sh
+./inicializador.sh
 ```

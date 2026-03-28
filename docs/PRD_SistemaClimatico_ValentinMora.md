@@ -22,7 +22,7 @@ El sistema está desplegado íntegramente con Docker y visualizado mediante Graf
 
 | Componente | Tecnología | Descripción |
 | :--- | :--- | :--- |
-| **n8n** | Docker | Orquestador que descarga datos de APIs (OWM) y servidores externos (SMN). |
+| **Python Fetchers** | Contenedor | Scripts nativos que descargan datos de APIs (OWM) y servidores externos (SMN y GOES) de manera programada. |
 | **Processor** | Python/OpenCV | Motor que recorta imágenes GOES, parsea datos crudos y calcula métricas. |
 | **InfluxDB** | Time-Series DB | Almacenamiento persistente de telemetría y predicciones. |
 | **Grafana** | Dashboards | Panel visual para monitoreo de variables climáticas. |
@@ -30,7 +30,7 @@ El sistema está desplegado íntegramente con Docker y visualizado mediante Graf
 
 ### 2.2 Flujo de Datos
 
-1.  **Adquisición**: n8n descarga archivos crudos (JSON/TXT/ZIP) y los deposita en `/raw_data` o `/raw_images`.
+1.  **Adquisición**: Los scripts de Python (Fetchers) descargan archivos crudos de internet y los depositan localmente en `/raw_data` o `/raw_images`.
 2.  **Procesamiento**: El contenedor `processor` detecta los archivos. 
     *   Si es imagen GOES: La recorta y guarda en `/png-images`.
     *   Si es Telemetría: La procesa y la envía a InfluxDB.

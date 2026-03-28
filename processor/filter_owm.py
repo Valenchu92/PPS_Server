@@ -23,7 +23,7 @@ def process_owm_data(json_path):
         with open(json_path, 'r') as f:
             data = json.load(f)
 
-        # n8n suele enviar una lista [ {...} ]
+        # La API suele enviar una lista [ {...} ] al traer varios climas
         if isinstance(data, list):
             data = data[0]
 
@@ -52,6 +52,9 @@ def process_owm_data(json_path):
         # InfluxDB asume UTC, y Grafana se encarga de mostrarla en hora local (GMT-3)
         obs_time = datetime.utcfromtimestamp(dt)
 
+        # CONVERSIÓN: m/s -> km/h (* 3.6)
+        wind_kmh = float(wind_speed) * 3.6 if wind_speed else 0.0
+
         point = (
             Point("weather_station")
             .tag("location", "Rio Cuarto")
@@ -59,13 +62,16 @@ def process_owm_data(json_path):
             .field("temperature", float(temp))
             .field("humidity", float(humidity) if humidity else 0.0)
             .field("pressure", float(pressure) if pressure else 0.0)
-            .field("wind_speed", float(wind_speed) if wind_speed else 0.0)
+            .field("wind_speed", round(wind_kmh, 2))
             .field("wind_deg", float(wind_deg) if wind_deg else 0.0)
             .time(obs_time, WritePrecision.NS)
         )
 
-        write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
-        print(f"-> ¡Datos de OpenWeatherMap [{temp}°C] para el {obs_time} UTC guardados exitosamente!")
+        try:
+            write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
+            print(f"-> ¡Datos de OpenWeatherMap [{temp}°C] para el {obs_time} UTC guardados en InfluxDB exitosamente!")
+        except Exception as influx_err:
+            print(f"-> Error escribiendo en InfluxDB (Omitiendo): {influx_err}")
         
         # Guardar el JSON del clima para la página web
         try:
@@ -94,7 +100,7 @@ def process_owm_data(json_path):
                     "temperature": float(temp),
                     "humidity": float(humidity) if humidity else 0.0,
                     "pressure": float(pressure) if pressure else 0.0,
-                    "wind_speed": float(wind_speed) if wind_speed else 0.0,
+                    "wind_speed": round(wind_kmh, 2),
                     "wind_direction": str(wind_deg) if wind_deg else "0",
                     "description": description,
                     "icon": icon_code,
@@ -150,7 +156,7 @@ def update_weather_history(new_data, obs_time):
         "temperature": float(new_data.get("main", {}).get("temp")),
         "humidity": float(new_data.get("main", {}).get("humidity", 0)),
         "pressure": float(new_data.get("main", {}).get("pressure", 0)),
-        "wind_speed": float(new_data.get("wind", {}).get("speed", 0)),
+        "wind_speed": round(float(new_data.get("wind", {}).get("speed", 0)) * 3.6, 2),
         "description": new_data.get("weather", [{}])[0].get("description", "N/A"),
         "icon": new_data.get("weather", [{}])[0].get("icon", ""),
         "source": "owm"

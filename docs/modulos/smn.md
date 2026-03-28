@@ -3,16 +3,14 @@
 Este módulo se encarga de procesar la información meteorológica oficial provista por el Servicio Meteorológico Nacional Argentino.
 
 ## 🛰️ Adquisición de Datos
-n8n descarga periódicamente los archivos ZIP que contienen el estado de todas las estaciones del país desde el servidor del SMN. Estos archivos se guardan en `/raw_data/`.
+El script `fetch_smn.py` consulta de manera periódica los reportes meteorológicos desde el servidor del SMN. Estos archivos se guardan en `/raw_data/`.
 
 ## ⚙️ Procesamiento (`filter_smn.py`)
 El script detecta la llegada del archivo y realiza las siguientes acciones:
 1. **Extracción**: Si es un ZIP, lo descomprime temporalmente.
 2. **Filtrado**: Busca específicamente la estación **"Río Cuarto"**.
 3. **Parsing**: Extrae Temperatura, Humedad, Presión, Velocidad y Dirección del Viento.
-4. **Almacenamiento**: Guarda los3. Guarda en InfluxDB con el tag `source="owm"`.
-
-## 🔄 Lógica de Prioridad (Fallback)
+4. **Almacenamiento**: Guarda los datos procesados en InfluxDB marcándolos con `source="smn"`.## 🔄 Lógica de Prioridad (Fallback)
 El procesador de OWM implementa una lógica de respeto hacia los datos oficiales:
 - Antes de actualizar `latest_weather.json`, verifica si el SMN ha reportado datos hace menos de **70 minutos**.
 - Si el SMN está actualizado, OWM guarda sus datos en InfluxDB pero **no** sobrescribe la información de la galería web.

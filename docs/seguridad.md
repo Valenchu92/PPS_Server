@@ -16,6 +16,10 @@ Se añadieron las siguientes cabeceras para proteger al usuario y al servidor:
 ### Restricción de Métodos
 - Solo se permiten los métodos `GET` y `HEAD`. Esto convierte a la galería en un servicio puramente de **Solo Lectura**, bloqueando intentos de envío de datos (`POST`), modificación (`PUT`) o eliminación (`DELETE`).
 
+### Defensa contra DoS y Enumeración Excesiva
+- **Protección Slowloris (Layer 7):** Se implementaron reducciones agresivas de *timeout* (`client_body_timeout 10s`, `keepalive_timeout`) y un límite físico a la carga útil HTTP (`client_max_body_size 100K`) para obligar a Nginx a soltar conexiones hostiles y liberar \textit{workers}.
+- **Anti-Enumeración (Caché):** Los directorios de salida masivos (imágenes GOES/NOAA y JSONs meteorológicos) dictaminan un forzoso caché con expiración de 10 minutos (`Cache-Control`) frustrando a bots recolectores y relevando el I/O del host frente a eventuales redes proxy inversas.
+
 ## 2. Seguridad en Contenedores (Docker)
 
 Se han aplicado restricciones en `docker-compose.yml` siguiendo el principio de mínimo privilegio.
@@ -29,9 +33,12 @@ Se han aplicado restricciones en `docker-compose.yml` siguiendo el principio de 
 ### Límites de Recursos (DoS Protection)
 Se han definido límites de CPU y Memoria para todos los servicios para evitar que un proceso comprometido consuma todos los recursos del host:
 - **Gallery:** 256MB RAM / 0.5 CPU
-- **n8n / Grafana:** 512MB RAM / 0.5 CPU
+- **Grafana:** 512MB RAM / 0.5 CPU
 - **Processor:** 1GB RAM / 1.0 CPU
 - **InfluxDB:** 2GB RAM / 1.0 CPU
+
+### Corrección Automática de Vulnerabilidades (Zero-Days)
+- Se ha implementado **Watchtower**, configurado en modo *Low-Profile* (`128MB RAM`). Este guardián automatizado chequea diariamente (3:00 AM ART) los repositorios madre por parches críticos en las imágenes base (como Alpine UCLIBC o Nginx CVEs), garantizando la rotación limpia y sin tiempo de inactividad de toda la infraestructura.
 
 ## 3. Verificación de Resultados
 

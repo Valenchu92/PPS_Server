@@ -2,10 +2,10 @@
 
 Este módulo complementa los datos oficiales del SMN utilizando la API global de OpenWeatherMap, permitiendo una comparación en tiempo real.
 
-## 🔗 Integración con n8n
-El flujo en n8n realiza una petición HTTP al endpoint `weather` de OWM cada hora. 
+## 🔗 Descarga de Datos (`fetch_owm.py`)
+Un script en Python nativo realiza una petición HTTP al endpoint `weather` de OWM en intervalos programados. 
 
-Para que el servidor procese estos datos, el flujo de n8n debe guardar el resultado en:
+Para que el servidor procese estos datos, el script guarda el resultado crudo en:
 `/raw_data/owm_current.json`.
 
 ## ⚙️ Procesamiento (`filter_owm.py`)
@@ -25,11 +25,10 @@ Es crucial entender que el sistema no mide cuánto tiempo pasó desde que se des
 4. En ese caso, OWM toma el control del dashboard web marcando `source: owm`.
 
 ### Ventajas de una alta frecuencia de descarga
-Aunque n8n descargue el archivo del SMN cada 20 minutos, los 70 minutos de espera no se "reinician" con la descarga. Solo se reiniciarán cuando el SMN publique un archivo con una **nueva hora de observación** (ej: 12:00). 
+Aunque el script `fetch_smn.py` descargue el archivo del SMN cada 20 minutos, los 70 minutos de espera no se "reinician" con la descarga. Solo se reiniciarán cuando el SMN publique un archivo con una **nueva hora de observación** (ej: 12:00). 
 - Esto permite capturar el dato oficial apenas es publicado, minimizando el tiempo que el sistema permanece con datos de OWM (que es una estimación API).
 
 ## 📊 Comparativa en Grafana
 En el tablero principal, los ráficos de **Temperatura** y **Presión** están configurados para mostrar ambas fuentes simultáneamente. Esto facilita la detección de anomalías o retrasos en la actualización de los datos oficiales.
 
-## 🛠️ Requisitos
-Es necesario contar con una `API_KEY` válida de OpenWeatherMap configurada en el workflow de n8n.
+Es necesario contar con una `API_KEY` válida de OpenWeatherMap configurada en el archivo `.env` para que el script pueda descargar.

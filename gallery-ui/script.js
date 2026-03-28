@@ -145,10 +145,12 @@ document.addEventListener('DOMContentLoaded', () => {
         currentPress.textContent = `${data.pressure} hPa`;
         currentWind.textContent = `${data.wind_speed} km/h`;
         
-        // Update data source text
+        // Update data source text AND observation time
         const dataSource = document.querySelector('.data-source');
         if (dataSource) {
-            dataSource.textContent = `Fuente: ${data.source === 'smn' ? 'SMN Argentina' : 'OpenWeatherMap'}`;
+            const obsDate = new Date(data.time);
+            const timeStr = obsDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            dataSource.innerHTML = `Fuente: ${data.source === 'smn' ? 'SMN Argentina' : 'OpenWeatherMap'}<br><small>Obs: ${timeStr} UTC</small>`;
         }
 
         // Update icon based on OWM icon or description

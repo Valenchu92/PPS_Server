@@ -1,30 +1,5 @@
-version: '3.8'
 
 services:
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: n8n
-    ports:
-      - "127.0.0.1:${N8N_PORT:-5678}:5678"
-    volumes:
-      - n8n-data:/home/node/.n8n
-      - ${HOST_RAW_IMAGES_DIR:-./raw_images}:/raw_images:rw
-      - ${HOST_RAW_DATA_DIR:-./raw_data}:/raw_data:rw
-      - ${HOST_CONFIG_DIR:-./configs}:/configs:rw
-    environment:
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
-      - N8N_RESTRICT_FILE_ACCESS_TO=/raw_images;/raw_data
-      - OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY:-}
-      - OPENWEATHERMAP_CITY=${OPENWEATHERMAP_CITY:-Rio Cuarto,AR}
-    security_opt:
-      - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
-
   processor:
     build:
       context: ./processor
@@ -44,6 +19,8 @@ services:
       - INFLUX_BUCKET_PREDICTIONS=${INFLUXDB_BUCKET_PREDICTIONS:-predictions}
       - METEOROLOGY_ALTITUDE=${METEOROLOGY_ALTITUDE:-441}
       - RCLONE_GDRIVE_PATH=${RCLONE_GDRIVE_PATH:-images_pps}
+      - OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY:-}
+      - OPENWEATHERMAP_CITY=${OPENWEATHERMAP_CITY:-Rio Cuarto,AR}
     security_opt:
       - no-new-privileges:true
     deploy:
@@ -58,11 +35,12 @@ services:
   influxdb:
     image: influxdb:2
     container_name: influxdb
+    entrypoint: ["influxd"]
     ports:
       - "127.0.0.1:8086:8086"
     volumes:
       - influxdb-data:/var/lib/influxdb2
-      - ${HOST_CONFIG_DIR:-./configs}/influxdb:/etc/influxdb2
+      #- ${HOST_CONFIG_DIR:-./configs}/influxdb:/etc/influxdb2
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=${INFLUXDB_INIT_MODE:-setup}
       - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_INIT_USERNAME:-admin}
@@ -123,7 +101,23 @@ services:
           memory: 256M
     restart: unless-stopped
 
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      # 6 campos (Segundos, Minutos, Horas, Día, Mes, DíaSemana) -> 3 AM diario
+      - WATCHTOWER_SCHEDULE=0 0 3 * * *
+      - WATCHTOWER_CLEANUP=true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+    restart: unless-stopped
+
 volumes:
-  n8n-data:
   influxdb-data:
   grafana-data:
