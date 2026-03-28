@@ -1,7 +1,6 @@
 import os
 from datetime import datetime
-import urllib.request
-import urllib.error
+from utils import safe_download
 
 def download_goes():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
@@ -16,16 +15,14 @@ def download_goes():
     
     for img_type, url in images.items():
         filename = f"{base_dir}/goes_{img_type}_{timestamp}.jpg"
-        print(f"[{datetime.now()}] Descargando GOES {img_type}...")
-        try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=30) as response, open(filename, 'wb') as out_file:
-                out_file.write(response.read())
-            print(f"[{datetime.now()}] Imagen {img_type} guardada en {filename}")
-        except urllib.error.URLError as e:
-            print(f"[{datetime.now()}] Error descargando {img_type}: {e}")
-        except Exception as e:
-            print(f"[{datetime.now()}] Ocurrió un error general con {img_type}: {e}")
+        print(f"[{datetime.now()}] Iniciando descarga de GOES {img_type}...")
+        
+        success = safe_download(url, filename, retries=5)
+        
+        if success:
+            print(f"[{datetime.now()}] Imagen {img_type} guardada exitosamente en {filename}")
+        else:
+            print(f"[{datetime.now()}] ERROR: Falló la obtención de {img_type} tras varios reintentos.")
 
 if __name__ == "__main__":
     download_goes()

@@ -36,6 +36,10 @@ El sistema involucra dos componentes principales:
     Las imágenes recortadas están disponibles inmediatamente en:
     `http://localhost:8080/goes/`
 
-## 3. Configuración
+## 3. Configuración y Cavidades Técnicas
 
-Todo el proceso está automatizado por el script `inicializador.sh`. Asegúrate de que las variables de entorno en `.env` (puertos y rutas) sean las correctas. No se requiere configuración manual adicional para este módulo una vez que los contenedores están arriba.
+Todo el proceso está automatizado por el script `inicializador.sh`. Asegúrate de que las variables de entorno en `.env` (puertos y rutas) sean las correctas.
+
+> [!IMPORTANT]
+> **Nota sobre el color de la Bounding Box:**  
+> Se debe evitar el uso del color Rojo Puro para el dibujo decorativo sobre las imágenes recortadas. El motor de Nowcasting utiliza el canal rojo para detectar tormentas severas. El uso de este color para fines visuales genera falsos positivos críticos en el sistema de predicción. Actualmente, el sistema utiliza **Verde Puro (0, 255, 0)** como estándar seguro. Para más detalles técnicos sobre este desafío, consultar la [Bitácora de Desafíos](../lecciones_aprendidas.md).

@@ -1,13 +1,11 @@
 import os
 import math
 from datetime import datetime
-from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client import Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
+from utils import get_influx_client
 
 # Configuración de entornos
-INFLUX_URL = os.environ.get("INFLUX_URL", "http://influxdb:8086")
-INFLUX_TOKEN = os.environ.get("INFLUX_TOKEN")
-INFLUX_ORG = os.environ.get("INFLUX_ORG")
 INFLUX_BUCKET_TELEMETRY = os.environ.get("INFLUX_BUCKET_TELEMETRY", "telemetry")
 INFLUX_BUCKET_PREDICTIONS = os.environ.get("INFLUX_BUCKET_PREDICTIONS", "predictions")
 
@@ -94,13 +92,12 @@ def calculate_zambretti(p_slp, trend, wind_dir):
 def calculate_metrics():
     print(f"[{datetime.now().isoformat()}] Iniciando motor de cálculo meteorológico...")
     
-    if not INFLUX_TOKEN:
-        print("Error: INFLUX_TOKEN no configurado.")
+    client = get_influx_client()
+    if not client:
         return
-
-    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
     query_api = client.query_api()
     write_api = client.write_api(write_options=SYNCHRONOUS)
+    org = os.environ.get("INFLUX_ORG", "noaa_org")
 
     # 1. Obtener últimos datos para Río Cuarto (ventana de 4 horas)
     query = f'''
@@ -174,7 +171,7 @@ def calculate_metrics():
         .time(datetime.utcnow(), WritePrecision.NS)
 
     try:
-        write_api.write(bucket=INFLUX_BUCKET_PREDICTIONS, org=INFLUX_ORG, record=point)
+        write_api.write(bucket=INFLUX_BUCKET_PREDICTIONS, org=org, record=point)
         print(f"-> Índices guardados exitosamente en {INFLUX_BUCKET_PREDICTIONS}")
     except Exception as e:
         print(f"Error al guardar predicciones: {e}")

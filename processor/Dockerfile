@@ -41,7 +41,7 @@ RUN pip install --no-cache-dir \
 WORKDIR /app
 
 # Copy scripts and set ownership
-COPY --chown=appuser:appuser calculate_metrics.py download_cloud.py crop_goes.py filter_smn.py filter_owm.py fetch_goes.py fetch_owm.py fetch_smn.py entrypoint.sh /app/
+COPY --chown=appuser:appuser calculate_metrics.py download_cloud.py crop_goes.py filter_smn.py filter_owm.py fetch_goes.py fetch_owm.py fetch_smn.py nowcast_storm.py utils.py entrypoint.sh /app/
 
 RUN chmod +x /app/entrypoint.sh
 

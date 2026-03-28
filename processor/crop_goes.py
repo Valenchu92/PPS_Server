@@ -3,34 +3,13 @@ import os
 import cv2
 import numpy as np
 import datetime
-
-import hashlib
+from utils import get_file_hash, is_already_processed, mark_as_processed
 
 # Coordenadas estáticas (Ajustadas para la GOES-19 Sector SSA 7200x4320)
 Y_START = 1651
 Y_END = 2255
 X_START = 2700
 X_END = 3120
-
-HASH_DB_PATH = "/raw_images/.processed_hashes"
-
-def get_file_hash(filepath):
-    sha256_hash = hashlib.sha256()
-    with open(filepath, "rb") as f:
-        for byte_block in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(byte_block)
-    return sha256_hash.hexdigest()
-
-def is_already_processed(file_hash):
-    if not os.path.exists(HASH_DB_PATH):
-        return False
-    with open(HASH_DB_PATH, "r") as f:
-        processed_hashes = f.read().splitlines()
-        return file_hash in processed_hashes
-
-def mark_as_processed(file_hash):
-    with open(HASH_DB_PATH, "a") as f:
-        f.write(file_hash + "\n")
 
 def process_goes_image(input_path):
     output_base_dir = "/png-images"
@@ -57,7 +36,7 @@ def process_goes_image(input_path):
 
     # Check Hash to avoid duplicate processing
     file_hash = get_file_hash(input_path)
-    if is_already_processed(file_hash):
+    if is_already_processed(file_hash, "/raw_images/.processed_hashes"):
         print(f"Skipping: Image {filename} was already processed (Hash match).")
         return
 
@@ -78,6 +57,11 @@ def process_goes_image(input_path):
     print(f"Cropping Córdoba bounding box for {product}: X({X_START}-{X_END}) Y({Y_START}-{Y_END})")
     cropped_img = img[Y_START:Y_END, X_START:X_END]
 
+    # Dibujar la Bounding Box de Río Cuarto (Puntos dados manualmente)
+    # Coordenadas: (138, 368) a (158, 383). Color BGR: Verde puro (0, 255, 0), 1px de grosor
+    # Se usa verde puro porque el Hue 60 no es detectado por el analizador de tormentas (rojo/azul/amarillo).
+    cv2.rectangle(cropped_img, (138, 368), (158, 383), (0, 255, 0), 1)
+
     # Generate output filename with timestamp
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     output_filename = f"goes_{product}_{timestamp}.png"
@@ -87,7 +71,13 @@ def process_goes_image(input_path):
     success = cv2.imwrite(output_path, cropped_img)
     if success:
         print(f"Success! Cropped {product} image saved to {output_path}")
-        mark_as_processed(file_hash)
+        mark_as_processed(file_hash, "/raw_images/.processed_hashes")
+        
+        # Disparar pronóstico Nowcast SÓLO si es Sandwich (ahorro extremo de CPU)
+        if product == "sandwich":
+            import subprocess
+            print("-> Disparando análisis predictivo Nowcast (Optical Flow) para Sandwich...")
+            subprocess.Popen(["python3", "/app/nowcast_storm.py"])
     else:
         print("Error: Failed to write output image.")
 

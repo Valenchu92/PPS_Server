@@ -1,48 +1,57 @@
 #!/bin/bash
-echo "Starting NOAA/SMN Central Processor Engine..."
+echo "Starting NOAA/SMN Central Processor Engine (Robust Mode)..."
 
-# Ensure directories exist via volume mapping
-mkdir -p /raw_images
-mkdir -p /raw_data
-mkdir -p /png-images
-mkdir -p /png-NOAA
+# --- Manejo de Señales ---
+cleanup() {
+    echo "Terminating all background processes..."
+    kill $(jobs -p)
+    exit 0
+}
+trap cleanup SIGINT SIGTERM
 
-echo "Setting up periodic tasks..."
-# Tareas originales
-(while true; do python3 /app/download_cloud.py; sleep 10800; done) &
-(while true; do python3 /app/calculate_metrics.py; sleep 3600; done) &
+# --- Función para Tareas Periódicas ---
+run_periodic() {
+    local script=$1
+    local interval=$2
+    local name=$3
+    echo "[Init] Setting up $name every $interval seconds."
+    while true; do
+        python3 /app/"$script"
+        sleep "$interval"
+    done
+}
 
-# Nuevos Fetchers Nativos 
-(while true; do python3 /app/fetch_goes.py; sleep 600; done) &
-(while true; do python3 /app/fetch_smn.py; sleep 1200; done) &
-(while true; do python3 /app/fetch_owm.py; sleep 1800; done) &
+# --- Tareas Periódicas (Segundo Plano) ---
+run_periodic "download_cloud.py"  10800 "Rclone Cloud Sync" &
+run_periodic "calculate_metrics.py" 3600 "Meteorology Engine" &
+run_periodic "fetch_goes.py"        600 "GOES Fetcher" &
+run_periodic "fetch_smn.py"        1200 "SMN Fetcher" &
+run_periodic "fetch_owm.py"        1800 "OWM Fetcher" &
 
+echo "Watches established. Listening for new files in /raw_images and /raw_data..."
 
-echo "Watches established. Listening for new files..."
-# Loop to watch for new files in BOTH directories concurrently
-# We use inotifywait in monitor mode to trigger Python logic when new files arrive
+# Loop principal con inotifywait
+# Si inotifywait muere, el contenedor se detendrá (correcto para Docker)
 inotifywait -m -e close_write --format "%w%f" /raw_images /raw_data | while read NEWFILE
 do
-    echo "========================================="
-    echo "[$(date -u)] Detected modified file: $NEWFILE"
+    echo "-----------------------------------------"
+    echo "[$(date -u)] Event: $NEWFILE"
     
     if [[ "$NEWFILE" == /raw_images/* ]]; then
         if [[ "$NEWFILE" == *.jpg || "$NEWFILE" == *.png ]]; then
-            echo "-> Dispatching GOES Crop worker..."
+            echo "-> Dispatching GOES Crop..."
             python3 /app/crop_goes.py "$NEWFILE" &
             
-            # Keep only the last 5 raw images to save space
+            # Limpieza: Mantener solo las últimas 5 imágenes crudas
             ls -1tr /raw_images/*.jpg /raw_images/*.png 2>/dev/null | head -n -5 | xargs -r rm
         fi
     elif [[ "$NEWFILE" == /raw_data/* ]]; then
         if [[ "$NEWFILE" == *.txt || "$NEWFILE" == *.zip ]]; then
-            echo "-> Dispatching SMN Filter worker..."
+            echo "-> Dispatching SMN Filter..."
             python3 /app/filter_smn.py "$NEWFILE" &
         elif [[ "$NEWFILE" == *.json ]]; then
-            echo "-> Dispatching OWM Filter worker..."
+            echo "-> Dispatching OWM Filter..."
             python3 /app/filter_owm.py "$NEWFILE" &
         fi
-    else
-        echo "Ignored: Pattern not recognized."
     fi
 done

@@ -35,7 +35,6 @@ services:
   influxdb:
     image: influxdb:2
     container_name: influxdb
-    entrypoint: ["influxd"]
     ports:
       - "127.0.0.1:8086:8086"
     volumes:
@@ -111,6 +110,7 @@ services:
       # 6 campos (Segundos, Minutos, Horas, Día, Mes, DíaSemana) -> 3 AM diario
       - WATCHTOWER_SCHEDULE=0 0 3 * * *
       - WATCHTOWER_CLEANUP=true
+      - DOCKER_API_VERSION=1.41
     deploy:
       resources:
         limits:

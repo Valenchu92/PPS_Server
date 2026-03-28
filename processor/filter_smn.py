@@ -2,13 +2,8 @@ import sys
 import os
 import pandas as pd
 from datetime import datetime, timedelta
-from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client import Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
-
-INFLUX_URL = os.environ.get("INFLUX_URL", "http://influxdb:8086")
-INFLUX_TOKEN = os.environ.get("INFLUX_TOKEN")
-INFLUX_ORG = os.environ.get("INFLUX_ORG")
-INFLUX_BUCKET = os.environ.get("INFLUX_BUCKET_TELEMETRY")
 
 import hashlib
 import zipfile
@@ -16,26 +11,9 @@ import glob
 import shutil
 import tempfile
 import json
+from utils import get_influx_client, get_file_hash, is_already_processed, mark_as_processed
 
 HASH_DB_PATH = "/raw_data/.processed_hashes"
-
-def get_file_hash(filepath):
-    sha256_hash = hashlib.sha256()
-    with open(filepath, "rb") as f:
-        for byte_block in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(byte_block)
-    return sha256_hash.hexdigest()
-
-def is_already_processed(file_hash):
-    if not os.path.exists(HASH_DB_PATH):
-        return False
-    with open(HASH_DB_PATH, "r") as f:
-        processed_hashes = f.read().splitlines()
-        return file_hash in processed_hashes
-
-def mark_as_processed(file_hash):
-    with open(HASH_DB_PATH, "a") as f:
-        f.write(file_hash + "\n")
 
 def filter_smn_data(filepath):
     """
@@ -44,14 +22,14 @@ def filter_smn_data(filepath):
     """
     print(f"[{datetime.now().isoformat()}] Procesando archivo SMN: {filepath}")
     
-    # Check Hash to avoid duplicate processing
+    # Check Hash to avoid duplicate processing using centralized utils
     file_hash = get_file_hash(filepath)
-    if is_already_processed(file_hash):
+    if is_already_processed(file_hash, HASH_DB_PATH):
         print(f"Skipping: File {os.path.basename(filepath)} was already processed (Hash match).")
         return
 
-    if not INFLUX_TOKEN:
-        print("ERROR: INFLUX_TOKEN no está definido. Omitiendo volcado a BD.")
+    client = get_influx_client()
+    if not client:
         return
 
     # Manejo de la extracción si es un archivo ZIP
@@ -163,8 +141,9 @@ def filter_smn_data(filepath):
         if not rio_cuarto_data:
             print("Métrica abortada: La estación 'Río Cuarto' no fue encontrada en este registro o sus datos no son numéricos.")
         else:
-            client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
             write_api = client.write_api(write_options=SYNCHRONOUS)
+            bucket = os.environ.get("INFLUX_BUCKET_TELEMETRY", "telemetry")
+            org = os.environ.get("INFLUX_ORG", "noaa_org")
 
             point = (
                 Point("weather_station")
@@ -178,7 +157,7 @@ def filter_smn_data(filepath):
                 .time(rio_cuarto_data["time"], WritePrecision.NS)
             )
 
-            write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
+            write_api.write(bucket=bucket, org=org, record=point)
             print(f"-> ¡Datos reales de SMN {rio_cuarto_data['station']} [{rio_cuarto_data['temperature']}°C] para el {rio_cuarto_data['time']} guardados exitosamente!")
             
             # Guardar el JSON del clima para la página web
@@ -197,12 +176,14 @@ def filter_smn_data(filepath):
             except Exception as j_err:
                 print(f"Error escribiendo latest_weather.json: {j_err}")
 
-            mark_as_processed(file_hash)
+            mark_as_processed(file_hash, HASH_DB_PATH)
             
     except Exception as e:
         print(f"Error en el procesamiento del archivo: {e}")
         
     finally:
+        if 'client' in locals() and client:
+            client.close()
         # Limpieza del directorio temporal si se extrajo un zip
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)

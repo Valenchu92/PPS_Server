@@ -27,3 +27,10 @@ Para poner en marcha el servidor por primera vez, consulta la [Guía de Instalac
 ```bash
 ./inicializador.sh
 ```
+
+---
+
+## 💡 Recursos Adicionales
+
+- [**Desafíos y Lecciones Aprendidas**](lecciones_aprendidas.md): Una bitácora de los problemas técnicos resueltos durante el desarrollo, como el incidente de falsos positivos con OpenCV.
+- [**PRD del Proyecto**](PRD_SistemaClimatico_ValentinMora.md): Documento de Requerimientos del Producto original.

@@ -13,6 +13,7 @@ El sistema tiene como objetivo centralizar, procesar y visualizar datos meteorol
 1.  **Telemetría**: Ingesta de datos reales del SMN y OpenWeatherMap.
 2.  **Imágenes Satelitales**: Procesamiento de imágenes GOES-19 (recorte de Córdoba) y sincronización de imágenes NOAA.
 3.  **Análisis Local**: Cálculo de índices meteorológicos (Punto de Rocío, Pronóstico Zambretti) para la región de Río Cuarto.
+4.  **Nowcasting Predictivo**: Motor de visión artificial (Optical Flow de Farnebäck) que proyecta el movimiento de nubes a 1 y 2 horas para alertar sobre tormentas inminentes.
 
 El sistema está desplegado íntegramente con Docker y visualizado mediante Grafana y una Galería Web estática.
 
@@ -23,7 +24,7 @@ El sistema está desplegado íntegramente con Docker y visualizado mediante Graf
 | Componente | Tecnología | Descripción |
 | :--- | :--- | :--- |
 | **Python Fetchers** | Contenedor | Scripts nativos que descargan datos de APIs (OWM) y servidores externos (SMN y GOES) de manera programada. |
-| **Processor** | Python/OpenCV | Motor que recorta imágenes GOES, parsea datos crudos y calcula métricas. |
+| **Processor** | Python/OpenCV | Motor que recorta imágenes GOES, parsea datos crudos y calcula métricas. Incluye el motor de Nowcasting ponderado de 3 imágenes. |
 | **InfluxDB** | Time-Series DB | Almacenamiento persistente de telemetría y predicciones. |
 | **Grafana** | Dashboards | Panel visual para monitoreo de variables climáticas. |
 | **Gallery** | Nginx | Servidor web estático para la visualización de imágenes procesadas. |

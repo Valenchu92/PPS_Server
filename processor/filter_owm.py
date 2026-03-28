@@ -2,14 +2,9 @@ import sys
 import os
 import json
 from datetime import datetime
-from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client import Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
-
-# Configuración de InfluxDB
-INFLUX_URL = os.environ.get("INFLUX_URL", "http://influxdb:8086")
-INFLUX_TOKEN = os.environ.get("INFLUX_TOKEN")
-INFLUX_ORG = os.environ.get("INFLUX_ORG")
-INFLUX_BUCKET = os.environ.get("INFLUX_BUCKET_TELEMETRY", "telemetry")
+from utils import get_influx_client
 
 def process_owm_data(json_path):
     """
@@ -44,9 +39,13 @@ def process_owm_data(json_path):
             print("Error: El JSON de OWM no contiene datos de temperatura validos.")
             return
 
-        # Conectar a InfluxDB
-        client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+        # Conectar a InfluxDB usando centralizado utils
+        client = get_influx_client()
+        if not client:
+            return
         write_api = client.write_api(write_options=SYNCHRONOUS)
+        bucket = os.environ.get("INFLUX_BUCKET_TELEMETRY", "telemetry")
+        org = os.environ.get("INFLUX_ORG", "noaa_org")
 
         # Usamos utcfromtimestamp para asegurar que la hora de OWM se guarde en UTC real
         # InfluxDB asume UTC, y Grafana se encarga de mostrarla en hora local (GMT-3)
@@ -68,7 +67,7 @@ def process_owm_data(json_path):
         )
 
         try:
-            write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
+            write_api.write(bucket=bucket, org=org, record=point)
             print(f"-> ¡Datos de OpenWeatherMap [{temp}°C] para el {obs_time} UTC guardados en InfluxDB exitosamente!")
         except Exception as influx_err:
             print(f"-> Error escribiendo en InfluxDB (Omitiendo): {influx_err}")
@@ -121,6 +120,9 @@ def process_owm_data(json_path):
 
     except Exception as e:
         print(f"Error procesando OWM: {e}")
+    finally:
+        if 'client' in locals() and client:
+            client.close()
 
 def update_weather_history(new_data, obs_time):
     """
