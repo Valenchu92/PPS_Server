@@ -27,6 +27,8 @@ run_periodic "calculate_metrics.py" 3600 "Meteorology Engine" &
 run_periodic "fetch_goes.py"        600 "GOES Fetcher" &
 run_periodic "fetch_smn.py"        1200 "SMN Fetcher" &
 run_periodic "fetch_owm.py"        1800 "OWM Fetcher" &
+run_periodic "fetch_smn_prediction.py" 7200 "SMN Prediction Fetcher" &
+run_periodic "fetch_owm_prediction.py" 7200 "OWM Prediction Fetcher" &
 
 echo "Watches established. Listening for new files in /raw_images and /raw_data..."
 
@@ -46,9 +48,15 @@ do
             ls -1tr /raw_images/*.jpg /raw_images/*.png 2>/dev/null | head -n -5 | xargs -r rm
         fi
     elif [[ "$NEWFILE" == /raw_data/* ]]; then
-        if [[ "$NEWFILE" == *.txt || "$NEWFILE" == *.zip ]]; then
+        if [[ "$NEWFILE" == *smn_pred*.txt ]]; then
+            echo "-> Dispatching SMN Prediction Filter..."
+            python3 /app/filter_smn_prediction.py "$NEWFILE" &
+        elif [[ "$NEWFILE" == *.txt || "$NEWFILE" == *.zip ]]; then
             echo "-> Dispatching SMN Filter..."
             python3 /app/filter_smn.py "$NEWFILE" &
+        elif [[ "$NEWFILE" == *owm_pred*.json ]]; then
+            echo "-> Dispatching OWM Prediction Filter..."
+            python3 /app/filter_owm_prediction.py "$NEWFILE" &
         elif [[ "$NEWFILE" == *.json ]]; then
             echo "-> Dispatching OWM Filter..."
             python3 /app/filter_owm.py "$NEWFILE" &

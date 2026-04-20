@@ -91,3 +91,27 @@ Para el cálculo del desplazamiento de nubes, utilizamos el método de **Farneb�
 1.  **Expansión Polinomial:** El algoritmo estima la vecindad de cada píxel utilizando una **función cuadrática** ($f(x) \approx x^T A x + b^T x + c$). En lugar de solo mirar el brillo, intenta entender la "geometría" local de la nube.
 2.  **Seguimiento de Desplazamiento:** Al comparar dos imágenes, el algoritmo busca cómo se ha desplazado esa superficie polinomial. Si la "parábola" que representa a la nube se movió 3 píxeles a la derecha, ese es el vector resultante.
 3.  **Flujo Denso:** A diferencia de otros métodos que solo siguen "esquinas" (como Lucas-Kanade), Farnebäck calcula el movimiento para **cada píxel de la imagen**. Esto es ideal para meteorología, donde las nubes no tienen bordes definidos ni esquinas rígidas, sino que son masas difusas que cambian de forma constantemente.
+
+---
+
+## 🎨 Sprint Final: Endurecimiento, Desacoplamiento y Responsive Design
+**Fecha:** 19 de Abril, 2026  
+**Mejoras Claves Registradas:**
+
+En nuestro proceso iterativo final sobre la interfaz `gallery-ui` y el soporte de Back-End, lidiamos con múltiples lecciones enfocadas puramente en el diseño web y arquitectura subyacente.
+
+### 1. El Dilema del CSS Grid ("Grid Blow-out")
+- **Problema:** Al dotar a la galería de previsiones expandidas (OWM entrega hasta 5 días de proyecciones), el contenedor horizontal de pestañas excedió la barrera física de la pantalla en dispositivos móviles. Sorprendentemente, pese a tener `overflow-x: auto`, el contenedor "empujó" al grid padre, ensanchando toda la pantalla y deformando todos nuestros márgenes derechos y encogimiento de *Chart.js*.
+- **Solución/Lección:** Este fallo clásico se resolvió inyectando en el CSS la vital propiedad `min-width: 0;` a los hijos inmediatos del bloque, garantizando que respeten estrictamente la restricción espacial del móvil. De allí en más, siempre desconfiar de las columnas CSS Grid que contienen carriles expandibles.
+
+### 2. Sincronización UI Inteligente (El Fallback Táctico)
+- **Problema:** Si el sistema entraba en "Fallback" hacia OWM para capturar la temperatura (debido a la caída de una estación del SMN), el panel inferior de la web seguía mostrando "Pronóstico Extendido de SMN" - rompiendo la experiencia e induciendo a confusión.
+- **Solución/Lección:** Optamos por añadir una validación al ciclo de vida en `updateWeatherUI()`. Con ello, la interfaz escucha de dónde provienen verdaderamente los datos actuales, y emite de fondo un switch al panel para que ambos originen simétricamente desde la misma fuente.
+
+### 3. Fugas de Rendimiento y Desacople del DOM
+- **Problema:** Un error arquitectónico inicial encadenó las peticiones: *FetchPhotos -> FetchWeather -> FetchPredictions*. Por ende, si el usuario apretaba el botón de la capa del satélite para cambiar entre colores, recargaba indiscriminadamente APIs meteorológicos enteros, reiniciando inútilmente los gráficos.
+- **Solución/Lección:** Separar dominios lógicos (Responsabilidad Única). Ahora los gráficos de *Chart.js* operan en un ciclo autómata, y la galería de fotos solo busca sus recursos específicos cuando interactúan con ella. Asimismo, la variable de "fotograma freno de animación" se ajustó a la posición temporal correcta (`length - 1`) para evitar dar un pantallazo retroactivo.
+
+### 4. Estabilización Segura del Core (Docker Hardening)
+- **Problema:** Previo a nuestra gran refactorización, todos los servicios operaban implícitamente siendo superusuarios (`root`) dentro del contenedor, lo que exponía el *socket* y volúmenes a violaciones de base. Además InfluxDB era inestable en el pre-arranque (`setup`).
+- **Solución/Lección:** Se aplicaron perfiles restrictivos `no-new-privileges: true` y volúmenes Read-Only para Nginx. Paralelamente, en el `entrypoint.sh` se incrustó de forma metódica un bucle de latencia adaptativo para asegurarse de no disparar el Python Processor hasta recibir respuestas `HTTP 204` sólidas del InfluxDB (Ping de estado de salud), unificando todo bajo el usuario mitigado `appuser`.
