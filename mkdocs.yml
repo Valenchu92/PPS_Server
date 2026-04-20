@@ -48,9 +48,11 @@ nav:
       - SMN (Datos Oficiales): modulos/smn.md
       - OpenWeatherMap (API): modulos/owm.md
       - GOES-16 (Satelital): modulos/goes.md
+      - Logs y Seguridad (PLG/CrowdSec): modulos/logs_seguridad.md
   - Visualización:
       - Arquitectura UI: frontend_dashboard.md
       - Guía de Monitoreo: visualizacion.md
   - Diseño Responsivo y Móvil: diseno_responsivo.md
   - Seguridad: seguridad.md
   - Bitácora de Desafíos: lecciones_aprendidas.md
+  - Propuestas de Mejoras: futuras_mejoras.md

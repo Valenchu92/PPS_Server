@@ -44,10 +44,16 @@ GEOCOLOR_LEVELS = [
 
 def get_geocolor_match(sandwich_path):
     basename = os.path.basename(sandwich_path)
-    geo_name = basename.replace('sandwich', 'geocolor')
-    geo_path = os.path.join("/png-images/geocolor", geo_name)
-    if os.path.exists(geo_path):
-        return geo_path
+    # Nombre base: goes_sandwich_20260420_192054.png
+    # Buscamos coincidencias ignorando los segundos porque las descargas pueden tener desfasajes.
+    parts = basename.split('_')
+    if len(parts) >= 4:
+        date_part = parts[2]
+        time_part_hhmm = parts[3][:4] # '1920'
+        search_pattern = os.path.join("/png-images/geocolor", f"goes_geocolor_{date_part}_{time_part_hhmm}*.png")
+        matches = glob.glob(search_pattern)
+        if matches:
+            return matches[0]
     return None
 
 def get_last_three_sandwich_images(directory="/png-images/sandwich/"):
@@ -93,8 +99,10 @@ def evaluate_level_intersection(hsv_img, flow, level_config, target_time_hours):
         dx, dy = flow[cy, cx]
         
         # Filtro de velocidad: Ignorar contornos que casi no se mueven (terreno rojizo/marcas estáticas)
+        # Excepción crucial: Si la nube ya cubre la ciudad, no la ignoramos, ya que representa nubosidad estancada actual.
         if abs(dx) < 0.3 and abs(dy) < 0.3:
-            continue
+            if not bounding_boxes_intersect((x, y, x+w, y+h), rc_box):
+                continue
             
         proj_x1 = int(x + (dx * STEPS))
         proj_y1 = int(y + (dy * STEPS))
@@ -149,34 +157,38 @@ def run_nowcast():
         if impact_2h["level"] == 0 and evaluate_level_intersection(hsv_latest, flow, lvl, target_time_hours=2):
             impact_2h = lvl
             
-    # Arquitectura Híbrida Secundaria (Capa Geocolor Dual)
-    # Sólo gastamos CPU en calcular ópticas pasivas si el radar de tormenta dictamina Despejado (0)
+    # Arquitectura Híbrida Secundaria (Capa Geocolor Dual - Lógica Simplificada)
+    # Sólo evaluamos nubosidad pasiva si el radar de tormenta dictamina Despejado (0)
     if impact_1h["level"] == 0 or impact_2h["level"] == 0:
-        geo1 = get_geocolor_match(img1_path)
-        geo2 = get_geocolor_match(img2_path)
-        geo3 = get_geocolor_match(img3_path)
-        
-        if geo1 and geo2 and geo3:
-            print("-> [Dual-Channel] Activando capa Geocolor para detección de nubosidad fina/pasiva...")
-            f1_g = cv2.imread(geo1)
-            f2_g = cv2.imread(geo2)
-            f3_g = cv2.imread(geo3)
+        geo_files = glob.glob("/png-images/geocolor/goes_geocolor_*.png")
+        if geo_files:
+            latest_geo = sorted(geo_files)[-1]
+            print(f"-> [Dual-Channel] Activando capa Geocolor (Lógica Simplificada)...")
+            f_g = cv2.imread(latest_geo)
+            hsv_g = cv2.cvtColor(f_g, cv2.COLOR_BGR2HSV)
             
-            g1_geo = cv2.cvtColor(f1_g, cv2.COLOR_BGR2GRAY)
-            g2_geo = cv2.cvtColor(f2_g, cv2.COLOR_BGR2GRAY)
-            g3_geo = cv2.cvtColor(f3_g, cv2.COLOR_BGR2GRAY)
+            # Filtro amplio para blanco/gris (cualquier Hue, baja Saturación, alto Valor/Brillo)
+            mask = cv2.inRange(hsv_g, np.array([0, 0, 90]), np.array([180, 80, 255]))
             
-            hsv_geo_latest = cv2.cvtColor(f3_g, cv2.COLOR_BGR2HSV)
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            rc_box = (RC_X_START, RC_Y_START, RC_X_END, RC_Y_END)
+            is_cloudy = False
             
-            # Cálculo de flujos Ópticos exclusivos para textura fotográfica visible
-            flow_prev_g = cv2.calcOpticalFlowFarneback(g1_geo, g2_geo, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-            flow_recent_g = cv2.calcOpticalFlowFarneback(g2_geo, g3_geo, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-            flow_geo = cv2.addWeighted(flow_recent_g, 0.7, flow_prev_g, 0.3, 0)
-            
-            for lvl in GEOCOLOR_LEVELS:
-                if impact_1h["level"] == 0 and evaluate_level_intersection(hsv_geo_latest, flow_geo, lvl, target_time_hours=1):
+            for cnt in contours:
+                if cv2.contourArea(cnt) < 100:
+                    continue
+                x, y, w, h = cv2.boundingRect(cnt)
+                # Si una masa blanca o gris está sobre la ciudad ahora, asumimos que sigue nublado
+                if bounding_boxes_intersect((x, y, x+w, y+h), rc_box):
+                    print(f"DEBUG MATCH Geocolor: area={cv2.contourArea(cnt)} bbox=({x},{y},{w},{h})")
+                    is_cloudy = True
+                    break
+                    
+            if is_cloudy:
+                lvl = GEOCOLOR_LEVELS[0]
+                if impact_1h["level"] == 0:
                     impact_1h = lvl
-                if impact_2h["level"] == 0 and evaluate_level_intersection(hsv_geo_latest, flow_geo, lvl, target_time_hours=2):
+                if impact_2h["level"] == 0:
                     impact_2h = lvl
 
     print("================ STATUS DE PRONÓSTICO (NOWCAST) ================")

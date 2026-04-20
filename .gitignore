@@ -19,3 +19,9 @@ env/
 # SO local
 .DS_Store
 Thumbs.db
+
+# Observability y Logs (No versionar datos de Loki)
+loki-data/
+
+# Documentación (Archivos generados por MkDocs)
+site/

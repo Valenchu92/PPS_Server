@@ -69,7 +69,11 @@ DIRECTORIES=(
     "${HOST_CONFIG_DIR:-./configs}/influxdb"
     "${HOST_CONFIG_DIR:-./configs}/grafana/provisioning/datasources"
     "${HOST_CONFIG_DIR:-./configs}/grafana/provisioning/dashboards"
+    "${HOST_CONFIG_DIR:-./configs}/loki"
+    "${HOST_CONFIG_DIR:-./configs}/promtail"
+    "${HOST_CONFIG_DIR:-./configs}/crowdsec"
     "processor"
+    "./loki-data"
 )
 
 for DIR in "${DIRECTORIES[@]}"; do
@@ -81,6 +85,9 @@ for DIR in "${DIRECTORIES[@]}"; do
         echo "  - Directorio '$DIR' ya existe. Omitiendo."
     fi
 done
+
+# Permisos especiales para Loki (el contenedor no es root)
+chmod 777 ./loki-data
 
 # 5. Opcional: Configurar rclone 
 echo "$S_CLOUD Configuración de Google Drive (Opcional)"
@@ -113,9 +120,9 @@ echo "$S_DOCKER Construyendo e iniciando contenedores Docker..."
 docker compose build
 docker compose up -d
 
-echo "$S_WAIT Esperando a que InfluxDB esté completamente operativo..."
+echo "$S_WAIT Esperando a que InfluxDB esté completamente operativo e inicializado..."
 RETRIES=30
-until docker compose exec -T influxdb influx ping &> /dev/null || [ $RETRIES -eq 0 ]; do
+until docker compose exec -T influxdb influx bucket list --org "${INFLUXDB_INIT_ORG:-noaa_org}" --token "${INFLUXDB_INIT_ADMIN_TOKEN}" &> /dev/null || [ $RETRIES -eq 0 ]; do
     echo -n "."
     sleep 2
     RETRIES=$((RETRIES-1))
@@ -123,12 +130,20 @@ done
 echo ""
 
 if [ $RETRIES -eq 0 ]; then
-    echo "$S_WARN Precaución: InfluxDB tardó demasiado. Revisa si los buckets extra se crearon."
+    echo "$S_WARN Precaución: InfluxDB tardó demasiado en inicializarse. Revisa si los buckets extra se crearon."
 else
     docker compose exec -T influxdb influx bucket create --name "${INFLUXDB_BUCKET_INDEXES:-indexes}" --org "${INFLUXDB_INIT_ORG:-noaa_org}" --token "${INFLUXDB_INIT_ADMIN_TOKEN}" &>/dev/null || true
     docker compose exec -T influxdb influx bucket create --name "${INFLUXDB_BUCKET_PREDICTIONS:-predictions}" --org "${INFLUXDB_INIT_ORG:-noaa_org}" --token "${INFLUXDB_INIT_ADMIN_TOKEN}" &>/dev/null || true
     echo "$S_OK Buckets extra verificados/creados."
 fi
+
+# 7. Registrar Bouncer de Nginx en CrowdSec
+echo "$S_GEAR Configurando integración de seguridad CrowdSec..."
+# Esperar a que CrowdSec esté listo
+sleep 5
+docker compose exec -T crowdsec cscli bouncers add nginx-bouncer -k "${CROWDSEC_BOUNCER_KEY:-generame_una_key_secreta_aqui_12345}" &>/dev/null || true
+echo "$S_OK Nginx Bouncer registrado en CrowdSec."
+
 
 
 echo "=============================================================================="

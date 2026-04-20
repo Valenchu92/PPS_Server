@@ -3,6 +3,7 @@ import os
 import cv2
 import numpy as np
 import datetime
+import time
 from utils import get_file_hash, is_already_processed, mark_as_processed
 
 # Coordenadas estáticas (Ajustadas para la GOES-19 Sector SSA 7200x4320)
@@ -77,6 +78,7 @@ def process_goes_image(input_path):
         if product == "sandwich":
             import subprocess
             print("-> Disparando análisis predictivo Nowcast (Optical Flow) para Sandwich...")
+            time.sleep(3) # Wait for parallel GeoColor downloads to finish
             subprocess.Popen(["python3", "/app/nowcast_storm.py"])
     else:
         print("Error: Failed to write output image.")
