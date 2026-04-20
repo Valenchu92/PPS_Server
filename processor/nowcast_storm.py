@@ -16,28 +16,39 @@ STORM_LEVELS = [
     {
         "level": 4,
         "name": "Tormenta Severa (Granizo Posible)",
-        "desc": "Altísimo riesgo. Updrafts intensos con microcristales en el tope.",
+        "desc": "Altísimo riesgo. Updrafts intensos con topes muy fríos aproximándose.",
         "hsv_ranges": [[(20, 180, 180), (45, 255, 255)]] # YELLOW VIVID
     },
     {
         "level": 3,
         "name": "Lluvia Fuerte",
-        "desc": "Nubes convectivas frías. Probabilidad alta de precipitación intensa.",
+        "desc": "Nubes convectivas profundas. Probabilidad alta de precipitación intensa o descargas.",
         "hsv_ranges": [[(0, 180, 150), (10, 255, 255)], [(170, 180, 150), (180, 255, 255)]] # RED / PURE RED
     },
     {
         "level": 2,
         "name": "Lluvia Leve (Chaparrones)",
-        "desc": "Capa media y frentes. Lluvias débiles probables.",
-        "hsv_ranges": [[(80, 150, 150), (140, 255, 255)]] # VIVID BLUE / CYAN
-    },
+        "desc": "Frentes de capa media u oscuros. Precipitaciones aisladas o llovizna.",
+        "hsv_ranges": [[(80, 150, 150), (140, 255, 255)], [(100, 40, 100), (150, 149, 255)]] # VIVID BLUE / CYAN y DULL BLUES
+    }
+]
+
+GEOCOLOR_LEVELS = [
     {
         "level": 1,
         "name": "Mayormente Nublado",
-        "desc": "Cielo nuboso. Baja o nula probabilidad de lluvia.",
-        "hsv_ranges": [[(0, 0, 180), (180, 45, 255)]] # GRAYS / WHITES (Low saturation, High brightness)
+        "desc": "Cielo parcial o totalmente nuboso (Estratos aislados). Baja probabilidad de precipitación.",
+        "hsv_ranges": [[(0, 0, 110), (180, 60, 255)]] # GRAYS / WHITES (Extended Low saturation, Mid+ brightness)
     }
 ]
+
+def get_geocolor_match(sandwich_path):
+    basename = os.path.basename(sandwich_path)
+    geo_name = basename.replace('sandwich', 'geocolor')
+    geo_path = os.path.join("/png-images/geocolor", geo_name)
+    if os.path.exists(geo_path):
+        return geo_path
+    return None
 
 def get_last_three_sandwich_images(directory="/png-images/sandwich/"):
     search_pattern = os.path.join(directory, "*.png")
@@ -128,15 +139,45 @@ def run_nowcast():
     flow = cv2.addWeighted(flow_recent, 0.7, flow_prev, 0.3, 0)
     
     # Evaluar horizonte a 1_hora y 2_horas
-    impact_1h = {"level": 0, "name": "Cielo Despejado", "desc": "Sin nubes relevantes en aproximación."}
-    impact_2h = {"level": 0, "name": "Cielo Despejado", "desc": "Sin nubes relevantes en aproximación."}
+    impact_1h = {"level": 0, "name": "Cielo Despejado", "desc": "Sin nubosidad aproximándose confirmada por ambos canales satelitales."}
+    impact_2h = {"level": 0, "name": "Cielo Despejado", "desc": "Sin nubosidad aproximándose confirmada por ambos canales satelitales."}
     
-    # Evaluar en cascada: De Peor (4) a Menos Peligroso (1)
+    # Evaluar en cascada: De Peor (4) a Menos Peligroso (2) [Capa Sandwich Primaria]
     for lvl in STORM_LEVELS:
         if impact_1h["level"] == 0 and evaluate_level_intersection(hsv_latest, flow, lvl, target_time_hours=1):
             impact_1h = lvl
         if impact_2h["level"] == 0 and evaluate_level_intersection(hsv_latest, flow, lvl, target_time_hours=2):
             impact_2h = lvl
+            
+    # Arquitectura Híbrida Secundaria (Capa Geocolor Dual)
+    # Sólo gastamos CPU en calcular ópticas pasivas si el radar de tormenta dictamina Despejado (0)
+    if impact_1h["level"] == 0 or impact_2h["level"] == 0:
+        geo1 = get_geocolor_match(img1_path)
+        geo2 = get_geocolor_match(img2_path)
+        geo3 = get_geocolor_match(img3_path)
+        
+        if geo1 and geo2 and geo3:
+            print("-> [Dual-Channel] Activando capa Geocolor para detección de nubosidad fina/pasiva...")
+            f1_g = cv2.imread(geo1)
+            f2_g = cv2.imread(geo2)
+            f3_g = cv2.imread(geo3)
+            
+            g1_geo = cv2.cvtColor(f1_g, cv2.COLOR_BGR2GRAY)
+            g2_geo = cv2.cvtColor(f2_g, cv2.COLOR_BGR2GRAY)
+            g3_geo = cv2.cvtColor(f3_g, cv2.COLOR_BGR2GRAY)
+            
+            hsv_geo_latest = cv2.cvtColor(f3_g, cv2.COLOR_BGR2HSV)
+            
+            # Cálculo de flujos Ópticos exclusivos para textura fotográfica visible
+            flow_prev_g = cv2.calcOpticalFlowFarneback(g1_geo, g2_geo, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+            flow_recent_g = cv2.calcOpticalFlowFarneback(g2_geo, g3_geo, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+            flow_geo = cv2.addWeighted(flow_recent_g, 0.7, flow_prev_g, 0.3, 0)
+            
+            for lvl in GEOCOLOR_LEVELS:
+                if impact_1h["level"] == 0 and evaluate_level_intersection(hsv_geo_latest, flow_geo, lvl, target_time_hours=1):
+                    impact_1h = lvl
+                if impact_2h["level"] == 0 and evaluate_level_intersection(hsv_geo_latest, flow_geo, lvl, target_time_hours=2):
+                    impact_2h = lvl
 
     print("================ STATUS DE PRONÓSTICO (NOWCAST) ================")
     if impact_1h["level"] == 4:

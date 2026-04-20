@@ -442,10 +442,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (nameParts.length >= 4) {
             const dateStr = nameParts[2];
             const timeStr = nameParts[3];
-            const formatted = `${dateStr.slice(6,8)}/${dateStr.slice(4,6)}/${dateStr.slice(0,4)} ${timeStr.slice(0,2)}:${timeStr.slice(2,4)}:${timeStr.slice(4,6)}`;
-            imageTimestamp.textContent = isAnimating ? `Secuencia: ${formatted} UTC` : `Captura: ${formatted} UTC`;
+            
+            // Build ISO string from filename UTC payload
+            const isoString = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}T${timeStr.slice(0,2)}:${timeStr.slice(2,4)}:${timeStr.slice(4,6)}Z`;
+            const captureDate = new Date(isoString);
+            
+            const formatted = captureDate.toLocaleString('es-AR', {
+                timeZone: 'America/Argentina/Buenos_Aires',
+                hour12: false,
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            }).replace(',', '');
+            
+            imageTimestamp.textContent = isAnimating ? `Secuencia: ${formatted} Hora Río Cuarto, Córdoba` : `Captura: ${formatted} Hora Río Cuarto, Córdoba`;
             if (!isAnimating) {
-                lastUpdateNav.textContent = `Última actualización: ${new Date().toLocaleTimeString()}`;
+                lastUpdateNav.textContent = `Última actualización: ${new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false })}`;
             }
         }
     }
@@ -510,8 +521,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const dataSource = document.querySelector('.data-source');
         if (dataSource) {
             const obsDate = new Date(data.time);
-            const timeStr = obsDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            dataSource.innerHTML = `Fuente: ${data.source === 'smn' ? 'SMN Argentina' : 'OpenWeatherMap'}<br><small>Obs: ${timeStr} UTC</small>`;
+            const timeStr = obsDate.toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false, hour: '2-digit', minute: '2-digit' });
+            dataSource.innerHTML = `Fuente: ${data.source === 'smn' ? 'SMN Argentina' : 'OpenWeatherMap'}<br><small>Obs: ${timeStr} Local</small>`;
             
             // Match prediction tab to current data source
             switchProviderTab(data.source === 'smn' ? 'smn' : 'owm');
@@ -583,8 +594,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Local Clock logic
     function updateLocalClock() {
         const now = new Date();
-        const localTimeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        if (localClock) localClock.textContent = localTimeStr + " local";
+        const localTimeStr = now.toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (localClock) localClock.textContent = localTimeStr + " Hora Río Cuarto, Córdoba";
     }
     
     setInterval(updateLocalClock, 1000);
