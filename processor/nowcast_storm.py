@@ -86,6 +86,10 @@ def evaluate_level_intersection(hsv_img, flow, level_config, target_time_hours):
         m = cv2.inRange(hsv_img, lower, upper)
         mask_accumulator = cv2.bitwise_or(mask_accumulator, m)
         
+    # Aplicar apertura morfológica para eliminar ruido fino, líneas de cuadrícula y bordes de mapa (Falsos Positivos)
+    kernel = np.ones((5, 5), np.uint8)
+    mask_accumulator = cv2.morphologyEx(mask_accumulator, cv2.MORPH_OPEN, kernel)
+        
     contours, _ = cv2.findContours(mask_accumulator, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     for cnt in contours:
@@ -157,39 +161,32 @@ def run_nowcast():
         if impact_2h["level"] == 0 and evaluate_level_intersection(hsv_latest, flow, lvl, target_time_hours=2):
             impact_2h = lvl
             
-    # Arquitectura Híbrida Secundaria (Capa Geocolor Dual - Lógica Simplificada)
+    # Arquitectura Híbrida Secundaria (Capa Geocolor Dual - Lógica Predictiva)
     # Sólo evaluamos nubosidad pasiva si el radar de tormenta dictamina Despejado (0)
     if impact_1h["level"] == 0 or impact_2h["level"] == 0:
         geo_files = glob.glob("/png-images/geocolor/goes_geocolor_*.png")
         if geo_files:
             latest_geo = sorted(geo_files)[-1]
-            print(f"-> [Dual-Channel] Activando capa Geocolor (Lógica Simplificada)...")
+            print(f"-> [Dual-Channel] Activando capa Geocolor Predictiva...")
             f_g = cv2.imread(latest_geo)
             hsv_g = cv2.cvtColor(f_g, cv2.COLOR_BGR2HSV)
             
-            # Filtro amplio para blanco/gris (cualquier Hue, baja Saturación, alto Valor/Brillo)
-            mask = cv2.inRange(hsv_g, np.array([0, 0, 90]), np.array([180, 80, 255]))
+            # Filtro estricto: Blanco/Gris puro para evitar luces amarillas/naranjas de ciudad
+            geo_level = {
+                "level": 1,
+                "name": "Mayormente Nublado",
+                "hsv_ranges": [
+                    [(0, 0, 130), (180, 40, 255)] # Sat máxima 40, Brillo min 130
+                ]
+            }
             
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            rc_box = (RC_X_START, RC_Y_START, RC_X_END, RC_Y_END)
-            is_cloudy = False
-            
-            for cnt in contours:
-                if cv2.contourArea(cnt) < 100:
-                    continue
-                x, y, w, h = cv2.boundingRect(cnt)
-                # Si una masa blanca o gris está sobre la ciudad ahora, asumimos que sigue nublado
-                if bounding_boxes_intersect((x, y, x+w, y+h), rc_box):
-                    print(f"DEBUG MATCH Geocolor: area={cv2.contourArea(cnt)} bbox=({x},{y},{w},{h})")
-                    is_cloudy = True
-                    break
-                    
-            if is_cloudy:
-                lvl = GEOCOLOR_LEVELS[0]
-                if impact_1h["level"] == 0:
-                    impact_1h = lvl
-                if impact_2h["level"] == 0:
-                    impact_2h = lvl
+            # Evaluar proyección a 1 hora usando el mismo viento (flow) de Sandwich
+            if impact_1h["level"] == 0 and evaluate_level_intersection(hsv_g, flow, geo_level, target_time_hours=1):
+                impact_1h = geo_level
+                
+            # Evaluar proyección a 2 horas
+            if impact_2h["level"] == 0 and evaluate_level_intersection(hsv_g, flow, geo_level, target_time_hours=2):
+                impact_2h = geo_level
 
     print("================ STATUS DE PRONÓSTICO (NOWCAST) ================")
     if impact_1h["level"] == 4:

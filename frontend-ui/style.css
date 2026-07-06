@@ -644,6 +644,29 @@ footer .container {
     color: var(--accent-color);
 }
 
+.alert-footer.disclaimer {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px dashed rgba(240, 246, 252, 0.1);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    text-align: left;
+}
+
+.alert-footer.disclaimer strong {
+    color: #f1e05a;
+}
+
+.alert-footer.disclaimer a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.alert-footer.disclaimer a:hover {
+    text-decoration: underline;
+}
+
 .hidden { display: none; }
 
 /* Extended Forecast Styles */

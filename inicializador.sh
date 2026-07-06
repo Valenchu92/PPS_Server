@@ -152,6 +152,6 @@ echo "==========================================================================
 echo "Siguientes pasos:"
 echo "2. Accede a Grafana en: http://localhost:${GRAFANA_PORT:-3000} (admin/admin)."
 echo "3. Revisa los logs de Processor: docker compose logs -f processor"
-echo "4. Accede a la Galería estática en: http://localhost:${GALLERY_PORT:-8080}."
+echo "4. Accede a la Galería estática en: http://localhost:${WEB_SERVER_NGINX_PORT:-8080}."
 echo "5. InfluxDB activo en http://localhost:8086 con los 3 buckets listos."
 echo "=============================================================================="

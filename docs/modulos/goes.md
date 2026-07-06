@@ -14,7 +14,7 @@ El procesador realiza un **Crop (recorte)** automático centrado en la región d
 3. **Optimización**: El sistema mantiene solo las últimas 5 imágenes crudas para evitar el llenado del disco.
 
 ## 🖼️ Visualización
-Las imágenes recortadas se sirven a través del contenedor `gallery` (Nginx) y pueden ser visualizadas directamente en el dashboard de Grafana o mediante la URL:
+Las imágenes recortadas se sirven a través del contenedor `web-server-nginx` (Nginx) y pueden ser visualizadas directamente en el dashboard de Grafana o mediante la URL:
 `http://localhost:8080/`
 
 ## 🔮 Futuro: Análisis de Nubes

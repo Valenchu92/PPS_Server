@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isAnimating = false;
     let imageSequence = [];
     let currentFrame = 0;
-    let currentProduct = 'geocolor'; // Default GOES product
+    let currentProduct = 'sandwich'; // Default GOES product
     const btnAnimate = document.getElementById('btn-animate');
     const productTabs = document.querySelectorAll('.prod-tab');
     const docLink = document.getElementById('product-doc-link');
@@ -177,24 +177,31 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Map severity to text and color
         const levels = {
-            0: { txt: "NORMAL", color: "level-0" },
-            1: { txt: "NORMAL", color: "level-1" },
-            2: { txt: "ATENCIÓN", color: "level-2" },
-            3: { txt: "ALERTA", color: "level-3" },
-            4: { txt: "EXTREMO", color: "level-4" }
+            0: { txt: "No hay alertas activas", color: "level-0" },
+            1: { txt: "No hay alertas activas", color: "level-1" },
+            2: { txt: "Posibles fenómenos meteorológicos", color: "level-2" },
+            3: { txt: "Posibles fenómenos meteorológicos graves", color: "level-3" },
+            4: { txt: "Alerta extrema, informate con autoridades", color: "level-4" }
         };
         
         const mainLevel = data.severity_2h || 0;
         const config = levels[mainLevel] || levels[0];
         
         alertStatus.textContent = config.txt;
-        alertCondition.textContent = data.condition_2h || "Sin cambios significativos";
+        alertCondition.style.display = 'none'; // Ocultamos el label secundario
         
         // Reset and set semaphore color
         alertSemaphore.className = 'semaphore ' + config.color;
         
-        proj1h.textContent = data.condition_1h;
-        proj2h.textContent = data.condition_2h;
+        // Set projections
+        if (proj1h) {
+            const lvl1 = data.severity_1h || 0;
+            proj1h.textContent = levels[lvl1] ? levels[lvl1].txt : levels[0].txt;
+        }
+        if (proj2h) {
+            const lvl2 = data.severity_2h || 0;
+            proj2h.textContent = levels[lvl2] ? levels[lvl2].txt : levels[0].txt;
+        }
     }
 
     async function fetchExtendedForecasts() {
@@ -517,10 +524,14 @@ document.addEventListener('DOMContentLoaded', () => {
             windLabel.textContent = label;
         }
         
-        // Update data source text AND observation time
         const dataSource = document.querySelector('.data-source');
         if (dataSource) {
-            const obsDate = new Date(data.time);
+            // Aseguramos que se interprete como UTC agregando la 'Z' si viene de OWM (que usa UTC)
+            let timeString = data.time;
+            if (data.source === 'owm' && !timeString.endsWith('Z')) {
+                timeString += 'Z';
+            }
+            const obsDate = new Date(timeString);
             const timeStr = obsDate.toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false, hour: '2-digit', minute: '2-digit' });
             dataSource.innerHTML = `Fuente: ${data.source === 'smn' ? 'SMN Argentina' : 'OpenWeatherMap'}<br><small>Obs: ${timeStr} Local</small>`;
             

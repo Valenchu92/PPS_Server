@@ -22,7 +22,7 @@
         <div class="container">
             <div class="logo">
                 <span class="logo-icon">📡</span>
-                <h1>SatStream<span>PRO</span></h1>
+                <h1>TeleClima<span>UNRC</span></h1>
             </div>
             <div class="header-clocks">
                 <nav id="last-update">Actualizando...</nav>
@@ -35,7 +35,8 @@
         <section class="hero-section">
             <div class="content-wrapper">
                 <div class="left-column">
-                    <div class="top-metrics-row" style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 15px;">
+                    <div class="top-metrics-row"
+                        style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 15px;">
                         <div class="weather-card card" style="margin: 0;">
                             <h3>Clima Actual</h3>
                             <p class="location">Estación: Río Cuarto</p>
@@ -69,7 +70,8 @@
                             <div class="data-source">Fuente: SMN Argentina</div>
                         </div>
 
-                        <div id="third-party-forecast-card" class="card" style="margin: 0; padding-bottom: 5px; display: none;">
+                        <div id="third-party-forecast-card" class="card"
+                            style="margin: 0; padding-bottom: 5px; display: none;">
                             <div class="tabs provider-tabs" style="margin-bottom: 15px;">
                                 <button class="tab-btn active" data-provider="smn">Pronóstico SMN</button>
                                 <button class="tab-btn" data-provider="owm">Pronóstico OWM</button>
@@ -78,7 +80,8 @@
                             <!-- SMN Content -->
                             <div id="smn-forecast-content">
                                 <div class="tabs predictive-tabs" style="margin-top: 5px;">
-                                    <button class="tab-btn active" data-source="smn" data-type="temp">Temperatura</button>
+                                    <button class="tab-btn active" data-source="smn"
+                                        data-type="temp">Temperatura</button>
                                     <button class="tab-btn" data-source="smn" data-type="rain">Precipitaciones</button>
                                 </div>
                                 <div class="chart-scroll-area">
@@ -94,7 +97,8 @@
                             <!-- OWM Content -->
                             <div id="owm-forecast-content" class="hidden">
                                 <div class="tabs predictive-tabs" style="margin-top: 5px;">
-                                    <button class="tab-btn active" data-source="owm" data-type="temp">Temperatura</button>
+                                    <button class="tab-btn active" data-source="owm"
+                                        data-type="temp">Temperatura</button>
                                     <button class="tab-btn" data-source="owm" data-type="rain">Precipitaciones</button>
                                 </div>
                                 <div class="chart-scroll-area">
@@ -109,45 +113,45 @@
                         </div>
                     </div>
 
-                <div class="image-viewer card">
-                    <div class="card-header">
-                        <div class="status-badge">
-                            <span class="pulse"></span> EN VIVO: GOES-19
+                    <div class="image-viewer card">
+                        <div class="card-header">
+                            <div class="status-badge">
+                                <span class="pulse"></span> EN VIVO: GOES-19
+                            </div>
+                            <div class="product-tabs">
+                                <button class="prod-tab active" data-product="sandwich">
+                                    Banda Infrarroja <span>(Severidad)</span>
+                                </button>
+                                <button class="prod-tab" data-product="geocolor">
+                                    GeoColor <span>(Color Real)</span>
+                                </button>
+                                <button class="prod-tab" data-product="airmass">
+                                    AirMass <span>(Humedad)</span>
+                                </button>
+                            </div>
+                            <h2 id="image-timestamp">Satélite SatStream</h2>
                         </div>
-                        <div class="product-tabs">
-                            <button class="prod-tab active" data-product="geocolor">
-                                GeoColor <span>(Color Real)</span>
-                            </button>
-                            <button class="prod-tab" data-product="airmass">
-                                AirMass <span>(Humedad)</span>
-                            </button>
-                            <button class="prod-tab" data-product="sandwich">
-                                Sandwich <span>(Severidad)</span>
-                            </button>
+                        <div class="image-container">
+                            <img id="main-satellite-image" src="" alt="Imagen Satelital GOES">
+                            <div id="image-loader" class="loader"></div>
                         </div>
-                        <h2 id="image-timestamp">Satélite SatStream</h2>
+                        <div class="card-footer">
+                            <div class="footer-info">
+                                <p>Sector: Centro de Argentina (Río Cuarto y alrededores)</p>
+                                <p class="legend"><span class="box-green"></span> Zona Urbana Río Cuarto</p>
+                                <a id="product-doc-link"
+                                    href="https://www.star.nesdis.noaa.gov/GOES/documents/QuickGuide_CIRA_Geocolor_20171019.pdf"
+                                    target="_blank" class="doc-link">
+                                    📄 Documentación oficial NASA/NOAA
+                                </a>
+                            </div>
+                            <div class="animation-controls">
+                                <button id="btn-animate" class="btn-primary">
+                                    <span class="btn-icon">▶</span> Reproducir Secuencia
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="image-container">
-                        <img id="main-satellite-image" src="" alt="Imagen Satelital GOES">
-                        <div id="image-loader" class="loader"></div>
-                    </div>
-                    <div class="card-footer">
-                        <div class="footer-info">
-                            <p>Sector: Centro de Argentina (Río Cuarto y alrededores)</p>
-                            <p class="legend"><span class="box-green"></span> Zona Urbana Río Cuarto</p>
-                            <a id="product-doc-link"
-                                href="https://www.star.nesdis.noaa.gov/GOES/documents/QuickGuide_CIRA_Geocolor_20171019.pdf"
-                                target="_blank" class="doc-link">
-                                📄 Documentación oficial NASA/NOAA
-                            </a>
-                        </div>
-                        <div class="animation-controls">
-                            <button id="btn-animate" class="btn-primary">
-                                <span class="btn-icon">▶</span> Reproducir Secuencia
-                            </button>
-                        </div>
-                    </div>
-                </div>
                 </div>
 
                 <aside class="side-content">
@@ -156,7 +160,7 @@
                     <div id="nowcast-alert-card" class="card alert-card hidden">
                         <div class="alert-header">
                             <span class="alert-icon">🌀</span>
-                            <h3>Pronóstico a corto plazo</h3>
+                            <h3>Alertas a corto plazo (UNRC)</h3>
                         </div>
                         <div class="alert-body">
                             <div class="alert-level">
@@ -176,6 +180,12 @@
                                     <span id="proj-2h">--</span>
                                 </div>
                             </div>
+                            <div class="alert-footer disclaimer">
+                                ⚠️ <strong>Aviso:</strong> Estas proyecciones no están validadas por
+                                profesionales del área de meteorología. No use esta información para decisiones
+                                críticas. Consulte al <a href="https://www.smn.gob.ar/" target="_blank">SMN</a> para
+                                alertas oficiales.
+                            </div>
                         </div>
                     </div>
 
@@ -190,7 +200,7 @@
 
     <footer>
         <div class="container">
-            <p>&copy; 2026 PPS SatStream - Monitoreo Satelital de Próxima Generación</p>
+            <p>&copy; 2026 Monitoreo Satelital - UNRC</p>
             <div class="footer-links">
                 <span>Río Cuarto, Córdoba</span>
             </div>

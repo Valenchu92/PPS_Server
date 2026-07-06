@@ -3,7 +3,7 @@
 El proyecto cuenta con un frontend estático, ligero y reactivo que no requiere motores pesados como Node.js ni re-creación de vistas en servidor. Actúa como el centro neural principal para visualizar los recortes del GOES, alertas tempranas (Nowcasting) y cruzar pronósticos extendidos.
 
 ## Arquitectura de Distribución
-Toda la interfaz y los estilos residen en la carpeta `gallery-ui/`. Cuando el contenedor Nginx se despliega (`default.conf`), monta esta ruta como `/var/www/html` operando bajo el puerto `8080`. 
+Toda la interfaz y los estilos residen en la carpeta `frontend-ui/`. Cuando el contenedor Nginx se despliega (`default.conf`), monta esta ruta como `/var/www/html` operando bajo el puerto `8080`. 
 
 Para que este front funcione sin necesidad de base de datos directa, implementamos un esquema de acoplamiento débil basado en **JSON en disco**:
 - El contenedor `processor` (Python) genera regularmente archivos estáticos como `latest_weather.json`, `owm_prediction.json`, `smn_prediction.json`, y `latest_predictions.json` sobre volúmenes compartidos.

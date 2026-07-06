@@ -98,7 +98,7 @@ Para el cálculo del desplazamiento de nubes, utilizamos el método de **Farneb�
 **Fecha:** 19 de Abril, 2026  
 **Mejoras Claves Registradas:**
 
-En nuestro proceso iterativo final sobre la interfaz `gallery-ui` y el soporte de Back-End, lidiamos con múltiples lecciones enfocadas puramente en el diseño web y arquitectura subyacente.
+En nuestro proceso iterativo final sobre la interfaz `frontend-ui` y el soporte de Back-End, lidiamos con múltiples lecciones enfocadas puramente en el diseño web y arquitectura subyacente.
 
 ### 1. El Dilema del CSS Grid ("Grid Blow-out")
 - **Problema:** Al dotar a la galería de previsiones expandidas (OWM entrega hasta 5 días de proyecciones), el contenedor horizontal de pestañas excedió la barrera física de la pantalla en dispositivos móviles. Sorprendentemente, pese a tener `overflow-x: auto`, el contenedor "empujó" al grid padre, ensanchando toda la pantalla y deformando todos nuestros márgenes derechos y encogimiento de *Chart.js*.

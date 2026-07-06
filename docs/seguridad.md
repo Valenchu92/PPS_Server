@@ -4,7 +4,7 @@ Este documento detalla las medidas de seguridad implementadas en el PPS_Server p
 
 ## 1. Seguridad en el Servidor Web (Nginx)
 
-Se han implementado cabeceras de seguridad y restricciones de acceso en `configs/gallery/default.conf`.
+Se han implementado cabeceras de seguridad y restricciones de acceso en `configs/web-server-nginx/default.conf`.
 
 ### Cabeceras de Seguridad (HTTP Headers)
 Se añadieron las siguientes cabeceras para proteger al usuario y al servidor:

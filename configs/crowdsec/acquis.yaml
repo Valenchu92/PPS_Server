@@ -1,6 +1,6 @@
 ---
 source: docker
 container_name:
-  - gallery
+  - web-server-nginx
 labels:
   type: nginx

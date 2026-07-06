@@ -27,9 +27,11 @@ Una vez que OpenCV desgrana y entrega el campo vectorial microscópico, nuestro 
 Las capas satelitales arrastran *ruido blanco* o artefactos esporádicos causados por la transmisión espacial, los cuales inducirían derivas matemáticas catastróficas. Para remediarlo, nuestro código extrae los **últimos tres fotogramas** secuenciales en lugar de dos. 
 Cálcula el *Flujo Óptico Previo* ($T_{-20}$ a $T_{-10}$) y el *Flujo Óptico Reciente* ($T_{-10}$ a $T_0$). Seguidamente, mediante mezcla matricial `cv2.addWeighted`, consolida ambos tensores otorgando un 70% de dominancia a los vectores inminentes y 30% a los vestigios pasados. Al inducir esta "inercia térmica", descartamos movimientos erráticos, vibraciones de píxeles y validamos la cizalladura estructural del viento.
 
-### Etapa B: Segmentación en Espacio HSV (Umbrales Térmicos)
-Saber para dónde se mueve el viento de la imagen no sirve si no definimos "qué" se está moviendo. Convertimos el último fotograma visible al espacio de color morfológico **HSV (Hue, Saturation, Value)**.
-Basado en rangos hipercalibrados, la computadora aísla binariamente la matriz de nubes según su frialdad topográfica (ej: rojos/amarillos = convección extrema, cianes/grises = lloviznas).
+### Etapa B: Segmentación y Limpieza Morfológica (Espacio HSV)
+Saber para dónde se mueve el viento de la imagen no sirve si no definimos "qué" se está moviendo. Convertimos el último fotograma visible al espacio de color **HSV (Hue, Saturation, Value)**.
+Basado en rangos hipercalibrados, la computadora aísla binariamente la matriz de nubes según su frialdad topográfica o luminosidad (ej: rojos/amarillos = convección extrema, blancos puros = nubosidad pasiva).
+
+**Mitigación de Artefactos:** Para evitar que elementos ajenos al clima (como cuadrículas de latitud/longitud o fronteras dibujadas en blanco por el satélite) generen masas de falsos positivos, se aplica una técnica de **Apertura Morfológica** (`cv2.morphologyEx` utilizando `MORPH_OPEN` y un kernel de 5x5). Esta operación matemática (que combina una erosión seguida de una dilatación) "borra" instantáneamente cualquier ruido o línea delgada (menor a 5 píxeles), dejando absolutamente limpias e intactas a las masas sólidas (las nubes).
 
 ### Etapa C: Extrapolación de Topología Bounding-Box
 Una vez generadas las "máscaras" de píxeles peligrosos mediante el clasificador HSV, extraemos los contornos poligonales limpios usando `cv2.findContours`. 
@@ -39,3 +41,9 @@ Para cada celda o clúster de tormenta delimitada y validada paramétricamente (
 
 > [!TIP]
 > **Tuning de Abrasión Fija:** Se implementó una sub-cláusula de corte estricto `abs(dx) < 0.3`. Obliga a OpenCV a ignorar todo contorno detectado que no exhiba un desplazamiento temporal coherente. Esta criba técnica aniquila para siempre los "falsos positivos" procedentes de topografía escura del suelo, embalses hídricos erráticos y manchas de estática de la cámara de la NOAA.
+
+### Etapa D: Arquitectura Predictiva Dual (Capa Geocolor)
+El espectro "Sandwich" (infrarrojo mejorado) es excelente detectando tormentas severas, pero es ciego frente a la nubosidad pasiva o baja (estratos) que no genera topes fríos significativos. Para garantizar una asertividad total, el sistema implementa un esquema secundario o de reserva.
+Si el escáner de tormentas dictamina "Nivel 0 (Despejado)", el núcleo activa una evaluación dinámica sobre el canal visual/Geocolor:
+1.  **Filtro Anti-Contaminación Lumínica:** Durante la noche, la iluminación urbana (ciudades como Río Cuarto) genera brillos intensos que confunden a un sensor básico. Nuestro algoritmo soluciona esto usando un umbral HSV ultra-estricto: Saturación Máxima `40` y Brillo Mínimo `130`. Al rechazar coloraciones saturadas, el sistema se vuelve "daltónico" a las luces naranjas/amarillas de la ciudad, detectando exclusivamente el blanco/gris puro de las nubes.
+2.  **Movimiento Heredado (Zero-Cost):** En lugar de repetir los hiper-cálculos de la Fase A, la capa Geocolor hereda y reutiliza automáticamente la matriz polinomial de vientos del canal Sandwich. Así, la nube pasiva detectada es proyectada hacia el futuro (1H y 2H), permitiendo pronosticar nubosidad aproximándose sin consumir ni un megabyte extra de procesamiento de CPU.
