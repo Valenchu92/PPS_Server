@@ -20,17 +20,51 @@ echo "$S_START Iniciando configuración del entorno Server..."
 
 # 1. Verificar dependencias y permisos
 echo "$S_SEARCH Verificando dependencias y permisos..."
+
+MISSING_DEPS=()
 for req in docker curl unzip; do
     if ! command -v $req &> /dev/null; then
-        echo "$S_ERR Error: $req no está instalado."
-        exit 1
+        MISSING_DEPS+=("$req")
     fi
 done
 
+if [ ${#MISSING_DEPS[@]} -ne 0 ]; then
+    echo "$S_WARN Faltan las siguientes dependencias: ${MISSING_DEPS[*]}"
+    read -p "   ¿Deseas intentar instalarlas automáticamente ahora? (S/n): " install_deps
+    if [[ "$install_deps" =~ ^[Ss]$ ]] || [[ -z "$install_deps" ]]; then
+        echo "   Instalando dependencias..."
+        sudo apt-get update -y
+        
+        for req in "${MISSING_DEPS[@]}"; do
+            if [ "$req" == "docker" ]; then
+                echo "   Instalando Docker..."
+                curl -fsSL https://get.docker.com -o get-docker.sh
+                sudo sh get-docker.sh
+                sudo usermod -aG docker $USER
+                rm -f get-docker.sh
+                echo "$S_WARN ¡Docker instalado! Es probable que debas reiniciar la sesión o VM para usar docker sin sudo."
+            else
+                sudo apt-get install -y "$req"
+            fi
+        done
+    else
+        echo "$S_ERR Error: Faltan dependencias. Abortando."
+        exit 1
+    fi
+fi
+
 # Verificar permisos de Docker
+if ! sudo -n true 2>/dev/null; then 
+    # si no puede usar sudo sin pass, que el docker ps intente solo
+    DOCKER_CMD="docker"
+else
+    DOCKER_CMD="docker"
+fi
+
 if ! docker ps &> /dev/null; then
-    echo "$S_ERR Error: No tienes permisos para usar Docker."
-    echo "   Prueba con 'sudo $0' o agrega tu usuario al grupo: 'sudo usermod -aG docker \$USER' (luego reinicia sesión)"
+    echo "$S_ERR Error: No tienes permisos para usar Docker o el servicio no está activo."
+    echo "   Prueba ejecutar 'newgrp docker' o reiniciá tu sesión/máquina virtual y volvé a correr este script."
+    echo "   Alternativamente, podés correr el script con 'sudo ./inicializador.sh'."
     exit 1
 fi
 
