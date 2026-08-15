@@ -216,23 +216,25 @@ def run_nowcast():
         .field("condition_2h", impact_2h["name"]) \
         .time(datetime.utcnow(), WritePrecision.NS)
         
+    # EXPORTACIÓN JSON PARA GALERÍA (UX)
+    import json
+    prediction_data = {
+        "location": "Rio Cuarto",
+        "time": datetime.utcnow().isoformat(),
+        "severity_1h": impact_1h["level"],
+        "condition_1h": impact_1h["name"],
+        "severity_2h": impact_2h["level"],
+        "condition_2h": impact_2h["name"]
+    }
+    try:
+        with open("/png-images/latest_predictions.json", "w") as f:
+            json.dump(prediction_data, f)
+    except Exception as e:
+        print(f"-> [ERROR] Falló la escritura del JSON local: {e}")
+
     try:
         write_api.write(bucket=bucket, org=org, record=pt)
         print("-> [DB] Proyecciones guardadas exitosamente en InfluxDB.")
-        
-        # EXPORTACIÓN JSON PARA GALERÍA (UX)
-        import json
-        prediction_data = {
-            "location": "Rio Cuarto",
-            "time": datetime.utcnow().isoformat(),
-            "severity_1h": impact_1h["level"],
-            "condition_1h": impact_1h["name"],
-            "severity_2h": impact_2h["level"],
-            "condition_2h": impact_2h["name"]
-        }
-        with open("/png-images/latest_predictions.json", "w") as f:
-            json.dump(prediction_data, f)
-            
     except Exception as e:
         print(f"-> [ERROR DB] Falló la subida a InfluxDB: {e}")
     finally:

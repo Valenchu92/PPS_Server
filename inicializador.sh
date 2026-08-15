@@ -79,10 +79,13 @@ DIRECTORIES=(
 for DIR in "${DIRECTORIES[@]}"; do
     if [ ! -d "$DIR" ]; then
         mkdir -p "$DIR"
-        chmod 755 "$DIR"
+        # Otorgar permisos al usuario 1000 (común en contenedores no-root) para evitar errores de escritura
+        chown -R 1000:1000 "$DIR" 2>/dev/null || chmod 777 "$DIR"
         echo "  - Creado directorio: $DIR"
     else
-        echo "  - Directorio '$DIR' ya existe. Omitiendo."
+        # Si ya existe, nos aseguramos de que los permisos sean correctos de todos modos
+        chown -R 1000:1000 "$DIR" 2>/dev/null || chmod 777 "$DIR"
+        echo "  - Directorio '$DIR' ya existe. Actualizando permisos."
     fi
 done
 
@@ -132,8 +135,10 @@ echo ""
 if [ $RETRIES -eq 0 ]; then
     echo "$S_WARN Precaución: InfluxDB tardó demasiado en inicializarse. Revisa si los buckets extra se crearon."
 else
-    docker compose exec -T influxdb influx bucket create --name "${INFLUXDB_BUCKET_INDEXES:-indexes}" --org "${INFLUXDB_INIT_ORG:-noaa_org}" --token "${INFLUXDB_INIT_ADMIN_TOKEN}" &>/dev/null || true
-    docker compose exec -T influxdb influx bucket create --name "${INFLUXDB_BUCKET_PREDICTIONS:-predictions}" --org "${INFLUXDB_INIT_ORG:-noaa_org}" --token "${INFLUXDB_INIT_ADMIN_TOKEN}" &>/dev/null || true
+    echo "  -> Creando bucket 'indexes'..."
+    docker compose exec -T influxdb influx bucket create --name "${INFLUXDB_BUCKET_INDEXES:-indexes}" --org "${INFLUXDB_INIT_ORG:-noaa_org}" --token "${INFLUXDB_INIT_ADMIN_TOKEN}" || echo "  -> [Aviso] El bucket 'indexes' ya existe o hubo un error."
+    echo "  -> Creando bucket 'predictions'..."
+    docker compose exec -T influxdb influx bucket create --name "${INFLUXDB_BUCKET_PREDICTIONS:-predictions}" --org "${INFLUXDB_INIT_ORG:-noaa_org}" --token "${INFLUXDB_INIT_ADMIN_TOKEN}" || echo "  -> [Aviso] El bucket 'predictions' ya existe o hubo un error."
     echo "$S_OK Buckets extra verificados/creados."
 fi
 
