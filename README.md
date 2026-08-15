@@ -6,7 +6,7 @@ Este proyecto implementa el sistema de procesamiento y visualización de datos e
 
 El sistema está diseñado para capturar, procesar y visualizar datos meteorológicos de diversas fuentes en tiempo real.
 
-![Diagrama de Arquitectura](Diagrama%20PPS.drawio.png)
+![Diagrama de Arquitectura](Gemini_Generated_Image_qt3ksuqt3ksuqt3k.png)
 
 ## 🚀 Componentes del Sistema
 
