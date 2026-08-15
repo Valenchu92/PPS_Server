@@ -74,6 +74,8 @@ DIRECTORIES=(
     "${HOST_CONFIG_DIR:-./configs}/crowdsec"
     "processor"
     "./loki-data"
+    "./frontend-ui/goes"
+    "./frontend-ui/noaa"
 )
 
 for DIR in "${DIRECTORIES[@]}"; do
