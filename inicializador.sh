@@ -22,7 +22,7 @@ echo "$S_START Iniciando configuración del entorno Server..."
 echo "$S_SEARCH Verificando dependencias y permisos..."
 
 MISSING_DEPS=()
-for req in docker curl unzip; do
+for req in curl docker unzip; do
     if ! command -v $req &> /dev/null; then
         MISSING_DEPS+=("$req")
     fi
