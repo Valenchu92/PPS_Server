@@ -2,6 +2,7 @@ import os
 import glob
 import cv2
 import numpy as np
+import math
 from datetime import datetime
 from influxdb_client import Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
@@ -72,8 +73,8 @@ def bounding_boxes_intersect(box1, box2):
 
 def evaluate_level_intersection(hsv_img, flow, level_config, target_time_hours):
     """
-    Busca centroides del nivel especificado, los proyecta 'target_time_hours' (6 o 12 steps)
-    y retorna True si chocan con Río Cuarto.
+    Evalúa la intersección proyectando el mapa completo de la nube hacia el futuro
+    usando deformación de imagen (Image Warping) basado en flujo óptico.
     """
     STEPS = target_time_hours * 6  # 6 steps de 10 minutos = 1 hora
     rc_box = (RC_X_START, RC_Y_START, RC_X_END, RC_Y_END)
@@ -86,38 +87,120 @@ def evaluate_level_intersection(hsv_img, flow, level_config, target_time_hours):
         m = cv2.inRange(hsv_img, lower, upper)
         mask_accumulator = cv2.bitwise_or(mask_accumulator, m)
         
-    # Aplicar apertura morfológica para eliminar ruido fino, líneas de cuadrícula y bordes de mapa (Falsos Positivos)
+    # Aplicar apertura morfológica para eliminar ruido fino
     kernel = np.ones((5, 5), np.uint8)
     mask_accumulator = cv2.morphologyEx(mask_accumulator, cv2.MORPH_OPEN, kernel)
         
-    contours, _ = cv2.findContours(mask_accumulator, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Si no hay nada detectado en este nivel, salimos rápido
+    if cv2.countNonZero(mask_accumulator) == 0:
+        return False
+        
+    # Image Warping (Advección Semi-Lagrangiana recomendada por el paper)
+    # En lugar de asumir que la nube es un bloque sólido y mover su centroide,
+    # deformamos la forma exacta de la nube hacia el futuro.
+    h_img, w_img = mask_accumulator.shape
+    X, Y = np.meshgrid(np.arange(w_img), np.arange(h_img))
     
-    for cnt in contours:
-        if cv2.contourArea(cnt) < 25:
-            continue
-            
-        x, y, w, h = cv2.boundingRect(cnt)
-        cx = x + w//2
-        cy = y + h//2
-        
-        dx, dy = flow[cy, cx]
-        
-        # Filtro de velocidad: Ignorar contornos que casi no se mueven (terreno rojizo/marcas estáticas)
-        # Excepción crucial: Si la nube ya cubre la ciudad, no la ignoramos, ya que representa nubosidad estancada actual.
-        if abs(dx) < 0.3 and abs(dy) < 0.3:
-            if not bounding_boxes_intersect((x, y, x+w, y+h), rc_box):
-                continue
-            
-        proj_x1 = int(x + (dx * STEPS))
-        proj_y1 = int(y + (dy * STEPS))
-        proj_x2 = proj_x1 + w
-        proj_y2 = proj_y1 + h
-        
-        if bounding_boxes_intersect((proj_x1, proj_y1, proj_x2, proj_y2), rc_box):
-            print(f"DEBUG MATcH: Lvl={level_config['level']} area={cv2.contourArea(cnt)} bbox=({x},{y},{w},{h}) dx/dy=({dx:.2f},{dy:.2f})")
-            return True
+    # Para mapear hacia el futuro (cv2.remap usa mapeo inverso):
+    # El valor futuro en (x,y) proviene del pasado en (x - dx*STEPS, y - dy*STEPS)
+    map_x = np.float32(X - flow[..., 0] * STEPS)
+    map_y = np.float32(Y - flow[..., 1] * STEPS)
+    
+    # Deformar la máscara hacia el futuro usando los vectores del flujo denso
+    warped_mask = cv2.remap(mask_accumulator, map_x, map_y, cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    
+    # Comprobar si hay nubes pronosticadas sobre el área de Río Cuarto
+    rc_region = warped_mask[rc_box[1]:rc_box[3], rc_box[0]:rc_box[2]]
+    pixels_in_rc = cv2.countNonZero(rc_region)
+    
+    if pixels_in_rc > 10:  # Umbral de tolerancia de 10 píxeles para evitar falsos positivos por micro-ruidos
+        print(f"DEBUG MATCH WARPING: Lvl={level_config['level']} impactará RC con {pixels_in_rc} píxeles de cobertura.")
+        return True
             
     return False
+
+def calculate_dew_point(T, H):
+    """Fórmula de Magnus-Tetens para calcular el Punto de Rocío."""
+    if T is None or H is None: return 10.0
+    a = 17.27
+    b = 237.7
+    alpha = ((a * T) / (b + T)) + math.log(H/100.0)
+    return (b * alpha) / (a - alpha)
+
+def get_owm_telemetry():
+    """Obtiene exclusivamente datos de OpenWeatherMap de InfluxDB para el cálculo difuso."""
+    client = get_influx_client()
+    if not client: return 0.0, 10.0
+    
+    query_api = client.query_api()
+    bucket = os.environ.get("INFLUX_BUCKET_TELEMETRY", "telemetry")
+    
+    # 1. Obtener Temp, Humedad y Presión actual (OWM exclusivo)
+    query_current = f'''
+    from(bucket: "{bucket}")
+        |> range(start: -2h)
+        |> filter(fn: (r) => r["_measurement"] == "weather_station")
+        |> filter(fn: (r) => r["location"] == "Rio Cuarto")
+        |> filter(fn: (r) => r["source"] == "owm")
+        |> last()
+    '''
+    
+    # 2. Obtener Presión de hace ~3 horas (OWM exclusivo) para tendencia
+    query_old = f'''
+    from(bucket: "{bucket}")
+        |> range(start: -4h, stop: -2h)
+        |> filter(fn: (r) => r["_measurement"] == "weather_station")
+        |> filter(fn: (r) => r["location"] == "Rio Cuarto")
+        |> filter(fn: (r) => r["source"] == "owm")
+        |> filter(fn: (r) => r["_field"] == "pressure")
+        |> last()
+    '''
+    
+    current_data = {}
+    for table in query_api.query(query_current):
+        for record in table.records:
+            current_data[record.get_field()] = record.get_value()
+            
+    old_pressure = None
+    for table in query_api.query(query_old):
+        for record in table.records:
+            old_pressure = record.get_value()
+            
+    client.close()
+
+    # Cálculos
+    P_current = current_data.get("pressure")
+    pt = (P_current - old_pressure) if P_current and old_pressure else 0.0
+    dp = calculate_dew_point(current_data.get("temperature"), current_data.get("humidity"))
+    
+    return pt, dp
+
+def calculate_fuzzy_hazard_probability(sat_level):
+    """
+    Motor de Inferencia Difusa (Cb-TRAM methodology)
+    Utiliza funciones de pertenencia matemáticas continuas.
+    """
+    # 1. Valor Discreto Satelital
+    sat_scores = {4: 0.95, 3: 0.75, 2: 0.50, 1: 0.25, 0: 0.0}
+    sat_score = sat_scores.get(sat_level, 0.0)
+    
+    # 2. Obtener precursores OWM exclusivos
+    pt, dp = get_owm_telemetry()
+        
+    # 3. Funciones de Pertenencia Matemáticas (Curvas Difusas)
+    # A. Curva de Presión: max(0, min(1, (0.5 - pt) / 2.5))
+    press_score = max(0.0, min(1.0, (0.5 - pt) / 2.5))
+        
+    # B. Curva de Humedad: max(0, min(1, (dp - 10.0) / 10.0))
+    dew_score = max(0.0, min(1.0, (dp - 10.0) / 10.0))
+        
+    # 4. Fusión de Datos: (Cinemática 50% + Dinámica 30% + Termodinámica 20%)
+    hazard_probability = (sat_score * 0.50) + (press_score * 0.30) + (dew_score * 0.20)
+    
+    print(f"-> [Fuzzy Logic] Sat={sat_score:.2f} | Press({pt:.1f})={press_score:.2f} | DewP({dp:.1f})={dew_score:.2f}")
+    print(f"-> [Fuzzy Logic] Riesgo Combinado = {hazard_probability:.2f} ({(hazard_probability*100):.1f}%)")
+    
+    return hazard_probability
 
 def run_nowcast():
     print(f"\n[{datetime.now().isoformat()}] INICIANDO ANÁLISIS PREDICTIVO (NOWCASTING OF PONDERADO)")
@@ -137,14 +220,23 @@ def run_nowcast():
     g2 = cv2.cvtColor(f2, cv2.COLOR_BGR2GRAY)
     g3 = cv2.cvtColor(f3, cv2.COLOR_BGR2GRAY)
     
+    # AISLAMIENTO DE NUBOSIDAD (Filtrar ruido de fondo/terreno)
+    # Mandamos a negro (0) cualquier píxel menor a 40 para que Farnebäck
+    # solo rastree el movimiento de las estructuras nubosas brillantes.
+    _, g1 = cv2.threshold(g1, 40, 255, cv2.THRESH_TOZERO)
+    _, g2 = cv2.threshold(g2, 40, 255, cv2.THRESH_TOZERO)
+    _, g3 = cv2.threshold(g3, 40, 255, cv2.THRESH_TOZERO)
+    
     # HSV del frame más reciente para detección de niveles
     hsv_latest = cv2.cvtColor(f3, cv2.COLOR_BGR2HSV)
 
     # 1. Flujo previo (f1 -> f2)
-    flow_prev = cv2.calcOpticalFlowFarneback(g1, g2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    # Parámetros ajustados (levels=5, winsize=25) según el paper para rastreo óptimo de nubes
+    flow_prev = cv2.calcOpticalFlowFarneback(g1, g2, None, 0.5, 5, 25, 3, 5, 1.2, 0)
     
     # 2. Flujo reciente (f2 -> f3) 
-    flow_recent = cv2.calcOpticalFlowFarneback(g2, g3, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+    # Parámetros ajustados (levels=5, winsize=25) según el paper para rastreo óptimo de nubes
+    flow_recent = cv2.calcOpticalFlowFarneback(g2, g3, None, 0.5, 5, 25, 3, 5, 1.2, 0)
     
     # COMBINACIÓN PONDERADA: 70% Reciente + 30% Previo
     # Esto da estabilidad (inercia) pero prioriza el movimiento actual.
@@ -187,6 +279,29 @@ def run_nowcast():
             # Evaluar proyección a 2 horas
             if impact_2h["level"] == 0 and evaluate_level_intersection(hsv_g, flow, geo_level, target_time_hours=2):
                 impact_2h = geo_level
+
+    # -------------------------------------------------------------------------
+    # DATA FUSION: Aplicar Lógica Difusa (Cb-TRAM methodology)
+    # -------------------------------------------------------------------------
+    def apply_fuzzy_logic_to_impact(impact_dict, label):
+        if impact_dict["level"] > 0:
+            print(f"\n--- Evaluando Fuzzy Logic {label} ---")
+            prob = calculate_fuzzy_hazard_probability(impact_dict["level"])
+            if prob >= 0.70:
+                impact_dict["level"] = 4
+                impact_dict["name"] = "Tormenta Severa Confirmada"
+            elif prob >= 0.50:
+                impact_dict["level"] = 3
+                impact_dict["name"] = "Lluvia Fuerte Probable"
+            elif prob >= 0.30:
+                impact_dict["level"] = 2
+                impact_dict["name"] = "Lluvia Leve (Chaparrones)"
+            else:
+                impact_dict["level"] = 1
+                impact_dict["name"] = "Mayormente Nublado (Riesgo Mitigado)"
+
+    apply_fuzzy_logic_to_impact(impact_1h, "1H")
+    apply_fuzzy_logic_to_impact(impact_2h, "2H")
 
     print("================ STATUS DE PRONÓSTICO (NOWCAST) ================")
     if impact_1h["level"] == 4:
