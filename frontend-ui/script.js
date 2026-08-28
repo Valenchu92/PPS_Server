@@ -526,9 +526,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const dataSource = document.querySelector('.data-source');
         if (dataSource) {
-            // Aseguramos que se interprete como UTC agregando la 'Z' si viene de OWM (que usa UTC)
+            // Aseguramos que se interprete como UTC agregando la 'Z' para todos (SMN y OWM usan UTC)
             let timeString = data.time;
-            if (data.source === 'owm' && !timeString.endsWith('Z')) {
+            if (!timeString.endsWith('Z')) {
                 timeString += 'Z';
             }
             const obsDate = new Date(timeString);
