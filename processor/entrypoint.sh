@@ -29,6 +29,7 @@ run_periodic "fetch_smn.py"        1200 "SMN Fetcher" &
 run_periodic "fetch_owm.py"        1800 "OWM Fetcher" &
 run_periodic "fetch_smn_prediction.py" 7200 "SMN Prediction Fetcher" &
 run_periodic "fetch_owm_prediction.py" 7200 "OWM Prediction Fetcher" &
+run_periodic "cleanup_images.py" 43200 "Image Cleanup" &
 
 echo "Watches established. Listening for new files in /raw_images and /raw_data..."
 
