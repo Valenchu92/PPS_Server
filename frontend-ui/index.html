@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PPS SatStream - Visualización en Tiempo Real</title>
+    <title>TeleClimaUNRC</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -13,6 +13,9 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📡%3C/text%3E%3C/svg%3E">
+
 </head>
 
 <body>
@@ -181,10 +184,10 @@
                                 </div>
                             </div>
                             <div class="alert-footer disclaimer">
-                                ⚠️ <strong>Aviso:</strong> Estas proyecciones no están validadas por
-                                profesionales del área de meteorología. No use esta información para decisiones
-                                críticas. Consulte al <a href="https://www.smn.gob.ar/" target="_blank">SMN</a> para
-                                alertas oficiales.
+                                <strong>Proyecto Académico:</strong> No utilizar para decisiones críticas. Para alertas
+                                oficiales consulte al <a href="https://www.smn.gob.ar/" target="_blank">SMN</a>.<br>
+                                Basado en: <em>Optical Flow-Based Forecasting</em> (Xavier et al., 2026) y
+                                <em>Nowcasting Thunderstorms</em> (Forster &amp; Tafferner, 2012).
                             </div>
                         </div>
                     </div>
@@ -200,7 +203,7 @@
 
     <footer>
         <div class="container">
-            <p>&copy; 2026 Monitoreo Satelital - UNRC</p>
+            <p>&copy; 2026 Teleclima-UNRC &middot; GIDAT-UNRC &middot; Creado por Valentin Mora</p>
             <div class="footer-links">
                 <span>Río Cuarto, Córdoba</span>
             </div>
