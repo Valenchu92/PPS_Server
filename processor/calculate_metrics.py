@@ -124,6 +124,21 @@ def calculate_metrics():
 
     if not smn_data and not owm_data:
         print("No se encontraron datos recientes en InfluxDB para calcular métricas.")
+        # Escribir archivo por defecto para evitar error 404 en el frontend
+        import json
+        fallback_data = {
+            "time": datetime.utcnow().isoformat(),
+            "dew_point": 0.0,
+            "pressure_trend_value": 0.0,
+            "pressure_trend_text": "Estable",
+            "zambretti_code": 1,
+            "zambretti_phrase": "Sin datos"
+        }
+        try:
+            with open("/png-images/latest_indexes.json", "w") as f:
+                json.dump(fallback_data, f)
+        except Exception:
+            pass
         return
         
     current_data = {}
@@ -164,13 +179,18 @@ def calculate_metrics():
     T = current_data.get("temperature")
     H = current_data.get("humidity")
     P = current_data.get("pressure")
-    W_DIR = current_data.get("wind_direction", "Calma")
+    W_DIR = current_data.get("wind_direction")
+    if not W_DIR:
+        W_DIR = "Calma"
     
     # a. Punto de Rocío
     dew_point = None
     if T is not None and H is not None:
         dew_point = calculate_dew_point(T, H)
-        print(f"-> Punto de Rocío calculado: {dew_point:.2f}°C")
+        if dew_point is not None:
+            print(f"-> Punto de Rocío calculado: {dew_point:.2f}°C")
+        else:
+            print("-> Punto de Rocío no pudo ser calculado (Humedad no válida).")
 
     # b. Tendencia de Presión
     pressure_delta = 0.0
