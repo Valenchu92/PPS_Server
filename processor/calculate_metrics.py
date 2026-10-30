@@ -11,6 +11,8 @@ INFLUX_BUCKET_PREDICTIONS = os.environ.get("INFLUX_BUCKET_PREDICTIONS", "predict
 
 def calculate_dew_point(T, H):
     """Fórmula de Magnus-Tetens para punto de rocío"""
+    if H is None or H <= 0:
+        return None
     a = 17.27
     b = 237.7
     alpha = ((a * T) / (b + T)) + math.log(H/100.0)
@@ -109,14 +111,53 @@ def calculate_metrics():
     '''
     
     results = query_api.query(query)
-    current_data = {}
+    smn_data = {}
+    owm_data = {}
+    
     for table in results:
         for record in table.records:
-            current_data[record.get_field()] = record.get_value()
+            source = record.values.get("source")
+            if source == "smn":
+                smn_data[record.get_field()] = record.get_value()
+            elif source == "owm":
+                owm_data[record.get_field()] = record.get_value()
 
-    if not current_data:
+    if not smn_data and not owm_data:
         print("No se encontraron datos recientes en InfluxDB para calcular métricas.")
+        # Escribir archivo por defecto para evitar error 404 en el frontend
+        import json
+        fallback_data = {
+            "time": datetime.utcnow().isoformat(),
+            "dew_point": 0.0,
+            "pressure_trend_value": 0.0,
+            "pressure_trend_text": "Estable",
+            "zambretti_code": 1,
+            "zambretti_phrase": "Sin datos"
+        }
+        try:
+            with open("/png-images/latest_indexes.json", "w") as f:
+                json.dump(fallback_data, f)
+        except Exception:
+            pass
         return
+        
+    current_data = {}
+    # Priorizar SMN, respaldar con OWM si el dato falta o es inválido
+    for field in ["temperature", "humidity", "pressure", "wind_direction"]:
+        val_smn = smn_data.get(field)
+        val_owm = owm_data.get(field)
+        
+        # Validación especial: si es humedad o presión, asumimos que 0.0 es un error de lectura
+        is_smn_valid = val_smn is not None and val_smn != ""
+        if field in ["humidity", "pressure"] and val_smn == 0.0:
+            is_smn_valid = False
+            
+        if is_smn_valid:
+            current_data[field] = val_smn
+        elif val_owm is not None and val_owm != "":
+            current_data[field] = val_owm
+        else:
+            current_data[field] = val_smn if val_smn is not None else val_owm
 
     # 2. Obtener presión de hace 3 horas para la tendencia
     query_old = f'''
@@ -138,13 +179,18 @@ def calculate_metrics():
     T = current_data.get("temperature")
     H = current_data.get("humidity")
     P = current_data.get("pressure")
-    W_DIR = current_data.get("wind_direction", "Calma")
+    W_DIR = current_data.get("wind_direction")
+    if not W_DIR:
+        W_DIR = "Calma"
     
     # a. Punto de Rocío
     dew_point = None
     if T is not None and H is not None:
         dew_point = calculate_dew_point(T, H)
-        print(f"-> Punto de Rocío calculado: {dew_point:.2f}°C")
+        if dew_point is not None:
+            print(f"-> Punto de Rocío calculado: {dew_point:.2f}°C")
+        else:
+            print("-> Punto de Rocío no pudo ser calculado (Humedad no válida).")
 
     # b. Tendencia de Presión
     pressure_delta = 0.0

@@ -192,12 +192,13 @@ def calculate_fuzzy_hazard_probability(sat_level):
     press_score = max(0.0, min(1.0, (0.5 - pt) / 2.5))
         
     # B. Curva de Humedad: max(0, min(1, (dp - 10.0) / 10.0))
-    dew_score = max(0.0, min(1.0, (dp - 10.0) / 10.0))
+    dp_val = dp if dp is not None else 0.0
+    dew_score = max(0.0, min(1.0, (dp_val - 10.0) / 10.0))
         
     # 4. Fusión de Datos: (Cinemática 50% + Dinámica 30% + Termodinámica 20%)
     hazard_probability = (sat_score * 0.50) + (press_score * 0.30) + (dew_score * 0.20)
     
-    print(f"-> [Fuzzy Logic] Sat={sat_score:.2f} | Press({pt:.1f})={press_score:.2f} | DewP({dp:.1f})={dew_score:.2f}")
+    print(f"-> [Fuzzy Logic] Sat={sat_score:.2f} | Press({pt:.1f})={press_score:.2f} | DewP({dp_val:.1f})={dew_score:.2f}")
     print(f"-> [Fuzzy Logic] Riesgo Combinado = {hazard_probability:.2f} ({(hazard_probability*100):.1f}%)")
     
     return hazard_probability
